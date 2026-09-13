@@ -451,7 +451,9 @@ supplies the metadata Zenodo archives.
 
 ## Credits
 
-Built by **Philip Appiah**.
+Built by **Philip Appiah**
+([0009-0002-0706-2506](https://orcid.org/0009-0002-0706-2506)),
+The George Washington University.
 
 Grounded in Xia & Sun, *Bioinformatic and Statistical Analysis of Microbiome Data*
 (Springer, 2023); Xia, Sun & Chen, *Statistical Analysis of Microbiome Data with R*
