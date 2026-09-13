@@ -68,10 +68,99 @@ not get reported.
 
 ## Install
 
+### 1. What you need first
+
+| | |
+|---|---|
+| **Claude Code** | The CLI, desktop app (macOS/Windows), or the VS Code / JetBrains extension. Install it from [code.claude.com/docs](https://code.claude.com/docs). |
+| **R 4.4 or later** | MicroFitGut runs R for every computation. Get it from [r-project.org](https://www.r-project.org/), or `brew install r` on macOS. Check with `R --version`. |
+
+### 2. Open a Claude Code session
+
+Open a terminal — **Terminal** or **iTerm** on macOS, **Windows Terminal** or
+**PowerShell** on Windows, any shell on Linux — then move to the folder holding
+the data you want to analyse and start Claude Code:
+
+```bash
+cd ~/Documents/my-study      # wherever your data lives
+claude
+```
+
+Claude Code takes over the terminal and gives you its own prompt:
+
+```
+╭──────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code                     │
+╰──────────────────────────────────────────────╯
+
+>
+```
+
+**That `>` is the Claude Code prompt, and it is where the next commands go.** If
+you are using the desktop app or an IDE extension, the same prompt appears in
+Claude Code's own panel — you do not need a separate terminal.
+
+> **The commands below are slash commands, not shell commands.** They only work
+> at the `>` prompt. Typing them into bash or zsh will fail.
+
+### 3. Install the plugin
+
+At the `>` prompt, type each line and press Enter:
+
 ```
 /plugin marketplace add barah123/MicroFitGut
+```
+
+This registers this repository as a plugin marketplace. You should see it
+confirm that the marketplace `microfitgut` was added.
+
+```
 /plugin install microfitgut@microfitgut
 ```
+
+This installs the plugin itself. The `@microfitgut` suffix names the marketplace
+it comes from — useful once you have several configured.
+
+**Then restart Claude Code.** Plugins load at startup, so exit with `/exit` (or
+Ctrl-D) and run `claude` again. The skill will not appear until you do.
+
+<details>
+<summary>Prefer your shell? Same thing, without opening a session</summary>
+
+```bash
+claude plugin marketplace add barah123/MicroFitGut
+claude plugin install microfitgut@microfitgut
+```
+
+Plugins install to `~/.claude/plugins/`, so **the directory you run this from
+does not matter** — once installed, MicroFitGut is available in every project on
+your machine.
+</details>
+
+### 4. Check it worked
+
+Back at the `>` prompt:
+
+```
+/microfitgut:microfitgut
+```
+
+It should load and describe the eleven stages. Or skip the slash command
+entirely and just describe what you want:
+
+> analyse the 16S data in `ps9.RDS` — does diversity differ by region?
+
+<details>
+<summary>Removing it again</summary>
+
+```
+/plugin uninstall microfitgut
+/plugin marketplace remove microfitgut
+```
+
+Note the marketplace is removed by the name in its manifest (`microfitgut`), not
+by the repository name.
+</details>
 
 ### Requirements
 
@@ -108,16 +197,22 @@ BiocManager::install(c("phyloseq","microbiome","DESeq2","ALDEx2","ANCOMBC",
 
 ## Using it
 
-From a directory containing your data:
+Start Claude Code in the folder holding your data and describe the question. A
+useful request names the file, the grouping variable, and anything about the
+design that matters:
 
-```
-/microfitgut:microfitgut
-```
+> analyse `data/study.RDS` — does community structure differ by treatment?
+> Samples are repeated within participant, so account for that.
 
-Or just describe the task and it triggers on its own:
+MicroFitGut validates the input first and tells you what it found before running
+anything, so the design detail above is a courtesy rather than a requirement —
+it detects repeated measures on its own and will refuse the tests that assume
+independence either way.
 
-> analyse the 16S data in `data/study.RDS` — does community structure differ by
-> treatment, accounting for repeated sampling per participant?
+It then states its plan — the tests it will run, the thresholds it will use, and
+why — before touching the data. Filters and the primary differential-abundance
+method are fixed at that point, because choosing them after seeing p-values
+invalidates the false-discovery rate.
 
 ### Accepted inputs
 
