@@ -6,6 +6,14 @@ authors:
   - family-names: Appiah
     given-names: Philip
     affiliation: The George Washington University
+doi: "10.5281/zenodo.22731452"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22731452"
+    description: The concept DOI, which always resolves to the latest release.
+  - type: doi
+    value: "10.5281/zenodo.22731453"
+    description: The DOI of version 1.0.0.
 repository-code: "https://github.com/barah123/MicroFitGut"
 url: "https://github.com/barah123/MicroFitGut"
 abstract: >-

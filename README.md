@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.22731452"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22731452.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1D9E75.svg" alt="MIT licence"></a>
   <img src="https://img.shields.io/badge/R-%E2%89%A5%204.4-157F5E.svg" alt="R 4.4 or later">
   <img src="https://img.shields.io/badge/validation-90%2F106%20checks-157F5E.svg" alt="90 of 106 validation checks match">
@@ -416,15 +417,35 @@ laptop and Snakemake or Nextflow would be pure overhead.
 
 ## Citing MicroFitGut
 
-A DOI badge will appear here once the Zenodo record is minted. Until then, cite
-the repository and release tag:
+Every release is archived on Zenodo with its own DOI.
 
 > Appiah, P. (2026). *MicroFitGut: a downstream microbiome analysis agent for
-> Claude Code* (v1.0.0) [Computer software].
-> https://github.com/barah123/MicroFitGut
+> Claude Code* (Version 1.0.0) [Computer software]. Zenodo.
+> https://doi.org/10.5281/zenodo.22731452
 
-`CITATION.cff` in the repository root drives GitHub's **Cite this repository**
-button, and `.zenodo.json` supplies the metadata for the archived record.
+**Cite the concept DOI — [`10.5281/zenodo.22731452`](https://doi.org/10.5281/zenodo.22731452) —** which always
+resolves to the newest release. Use the version DOI
+[`10.5281/zenodo.22731453`](https://doi.org/10.5281/zenodo.22731453) only when you need to pin the exact
+version you ran.
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@software{appiah_microfitgut_2026,
+  author    = {Appiah, Philip},
+  title     = {MicroFitGut: a downstream microbiome analysis agent for Claude Code},
+  year      = {2026},
+  version   = {1.0.0},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.22731452},
+  url       = {https://doi.org/10.5281/zenodo.22731452}
+}
+```
+</details>
+
+`CITATION.cff` drives GitHub's **Cite this repository** button; `.zenodo.json`
+supplies the metadata Zenodo archives.
 
 ---
 
