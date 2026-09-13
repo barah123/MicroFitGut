@@ -414,6 +414,20 @@ laptop and Snakemake or Nextflow would be pure overhead.
 
 ---
 
+## Citing MicroFitGut
+
+A DOI badge will appear here once the Zenodo record is minted. Until then, cite
+the repository and release tag:
+
+> Appiah, P. (2026). *MicroFitGut: a downstream microbiome analysis agent for
+> Claude Code* (v1.0.0) [Computer software].
+> https://github.com/barah123/MicroFitGut
+
+`CITATION.cff` in the repository root drives GitHub's **Cite this repository**
+button, and `.zenodo.json` supplies the metadata for the archived record.
+
+---
+
 ## Credits
 
 Built by **Philip Appiah**.

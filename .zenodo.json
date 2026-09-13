@@ -1,0 +1,38 @@
+{
+  "title": "MicroFitGut: a downstream microbiome analysis agent for Claude Code",
+  "description": "<p>MicroFitGut is a Claude Code plugin for downstream analysis of 16S amplicon and shotgun metagenomic data. It takes a feature table &mdash; a phyloseq object, an ASV/taxonomy/metadata triplet, a MetaPhlAn or Kraken2 profile, or a PICRUSt2/HUMAnN functional table &mdash; through quality control, normalization, alpha and beta diversity, differential abundance, mixed and zero-inflated models, publication figures, and a reproducible report.</p><p>The design separates judgement from computation: a reference library of 16 documents encodes the analytical decisions (which normalization is valid for which test, which differential-abundance method suits which design, what every report must state), while 16 R modules comprising 221 functions perform the computation. Two auditing subagents check the result before publication.</p><p>MicroFitGut refuses combinations that produce clean but incorrect results: rarefied counts reaching DESeq2, UniFrac computed on a placeholder phylogeny, independent-samples tests applied to repeated measures, PERMANOVA conclusions unqualified by a dispersion check, and numbers in a report that do not trace to a logged artifact.</p><p>The tool was validated by re-running the stated answers of a graduate microbiome course: 106 checks, 90 matching, with every difference attributed to a specific reproducible cause.</p>",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Appiah, Philip",
+      "affiliation": "The George Washington University"
+    }
+  ],
+  "keywords": [
+    "microbiome",
+    "metagenomics",
+    "16S rRNA",
+    "bioinformatics",
+    "biostatistics",
+    "phyloseq",
+    "alpha diversity",
+    "beta diversity",
+    "differential abundance",
+    "compositional data analysis",
+    "reproducible research",
+    "large language model agent",
+    "Claude Code",
+    "R"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/barah123/MicroFitGut",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    }
+  ],
+  "language": "eng"
+}

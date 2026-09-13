@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "MicroFitGut: a downstream microbiome analysis agent for Claude Code"
+message: "If you use MicroFitGut in work that is published, please cite it."
+type: software
+authors:
+  - family-names: Appiah
+    given-names: Philip
+    affiliation: The George Washington University
+repository-code: "https://github.com/barah123/MicroFitGut"
+url: "https://github.com/barah123/MicroFitGut"
+abstract: >-
+  MicroFitGut is a Claude Code plugin for downstream analysis of 16S amplicon and
+  shotgun metagenomic data. It takes a feature table through quality control,
+  normalization, alpha and beta diversity, differential abundance, mixed and
+  zero-inflated models, publication figures, and a reproducible report. A
+  reference library of sixteen documents encodes the analytical decisions while
+  sixteen R modules perform the computation, and two auditing subagents check the
+  result before publication. The tool refuses combinations that produce clean but
+  incorrect results, and every number in its report traces to a logged artifact.
+keywords:
+  - microbiome
+  - metagenomics
+  - 16S rRNA
+  - bioinformatics
+  - biostatistics
+  - phyloseq
+  - differential abundance
+  - compositional data analysis
+  - reproducible research
+  - large language model agent
+license: MIT
+version: 1.0.0
+date-released: "2026-09-13"
