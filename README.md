@@ -8,6 +8,12 @@
 </p>
 
 <p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1D9E75.svg" alt="MIT licence"></a>
+  <img src="https://img.shields.io/badge/R-%E2%89%A5%204.4-157F5E.svg" alt="R 4.4 or later">
+  <img src="https://img.shields.io/badge/validation-90%2F106%20checks-157F5E.svg" alt="90 of 106 validation checks match">
+</p>
+
+<p align="center">
   <a href="#install">Install</a> ·
   <a href="#using-it">Use</a> ·
   <a href="#what-it-produces">Outputs</a> ·
@@ -323,6 +329,9 @@ Grounded in Xia & Sun, *Bioinformatic and Statistical Analysis of Microbiome Dat
 carry over from CanisLupus 2.0. Categorical palettes follow Okabe-Ito, continuous
 scales viridis — both colour-vision-safe, because in an ordination colour *is* the
 encoding.
+
+Released under the [MIT License](LICENSE). Use it, change it, build on it — the
+only condition is that the copyright notice travels with it.
 
 MicroFitGut analyses data. It does not replace the judgement of whoever signs the
 paper.
