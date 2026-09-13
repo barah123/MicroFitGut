@@ -1,0 +1,476 @@
+# =============================================================================
+# MicroFitGut — 01-intake.R
+#
+# Getting data into a phyloseq object, and refusing to proceed when it is not
+# what it claims to be. Every check here exists because skipping it produces an
+# analysis that runs cleanly and answers the wrong question.
+#
+# Accepted inputs:
+#   - a saved phyloseq object            .RDS
+#   - an OTU/ASV + taxonomy + metadata triplet   .csv / .txt / .tsv
+#   - a shotgun taxonomic profile        MetaPhlAn, Kraken2/Bracken
+#   - a functional profile               PICRUSt2, HUMAnN pathway abundance
+#   - a BIOM table                       via phyloseq::import_biom
+#
+# Requires: mfg_require(c("intake"))  and utils.R
+# =============================================================================
+
+# ── Reading a delimited table ────────────────────────────────────────────────
+
+#' Read a table whose first column holds row names, whatever the delimiter.
+#'
+#' The course material mixes .csv and tab-delimited .txt freely, sometimes with
+#' the same content, so the delimiter is detected rather than assumed.
+mfg_read_table <- function(path, row_names = 1) {
+  if (!file.exists(path)) stop("File not found: ", path, call. = FALSE)
+  first <- readLines(path, n = 1, warn = FALSE)
+  sep <- if (lengths(regmatches(first, gregexpr("\t", first))) >
+             lengths(regmatches(first, gregexpr(",", first)))) "\t" else ","
+  utils::read.delim(path, sep = sep, row.names = row_names, header = TRUE,
+                    check.names = FALSE, stringsAsFactors = FALSE,
+                    na.strings = c("NA", "", "NaN"))
+}
+
+# ── Orientation ──────────────────────────────────────────────────────────────
+
+#' Decide whether taxa are rows or columns in an abundance table.
+#'
+#' Getting this backwards is silent and catastrophic: every per-sample statistic
+#' becomes a per-taxon statistic and nothing errors. Decided by matching against
+#' the names in the taxonomy and metadata, not by guessing from the shape, since
+#' a study can easily have more samples than taxa or the reverse.
+mfg_detect_orientation <- function(abund, tax_ids = NULL, sample_ids = NULL) {
+  rn <- rownames(abund); cn <- colnames(abund)
+  score_rows_are_taxa <- 0L
+  score_cols_are_taxa <- 0L
+
+  if (!is.null(tax_ids)) {
+    score_rows_are_taxa <- score_rows_are_taxa + sum(rn %in% tax_ids)
+    score_cols_are_taxa <- score_cols_are_taxa + sum(cn %in% tax_ids)
+  }
+  if (!is.null(sample_ids)) {
+    score_rows_are_taxa <- score_rows_are_taxa + sum(cn %in% sample_ids)
+    score_cols_are_taxa <- score_cols_are_taxa + sum(rn %in% sample_ids)
+  }
+
+  if (score_rows_are_taxa == score_cols_are_taxa) {
+    return(list(taxa_are_rows = NA, evidence = "ambiguous",
+                rows_score = score_rows_are_taxa, cols_score = score_cols_are_taxa))
+  }
+  list(taxa_are_rows = score_rows_are_taxa > score_cols_are_taxa,
+       evidence = "matched against taxonomy and metadata names",
+       rows_score = score_rows_are_taxa, cols_score = score_cols_are_taxa)
+}
+
+# ── Building a phyloseq object ────────────────────────────────────────────────
+
+#' Build a phyloseq object from separate tables.
+#'
+#' Follows Demo 3 but adds the orientation check and the sample-ID intersection
+#' report, and refuses a random tree by default. `tree` accepts a path to a
+#' Newick file or a phylo object; `tree_is_real` records whether it was actually
+#' estimated from the sequence data, which every phylogenetic metric checks.
+build_phyloseq <- function(abund, tax = NULL, meta = NULL,
+                           tree = NULL, seqs = NULL,
+                           taxa_are_rows = NULL, tree_is_real = NULL) {
+
+  if (is.character(abund)) abund <- mfg_read_table(abund)
+  if (is.character(tax) && length(tax) == 1)  tax  <- mfg_read_table(tax)
+  if (is.character(meta) && length(meta) == 1) meta <- mfg_read_table(meta)
+
+  abund_m <- as.matrix(abund)
+  mode(abund_m) <- "numeric"
+
+  tax_ids    <- if (!is.null(tax))  rownames(tax)  else NULL
+  sample_ids <- if (!is.null(meta)) rownames(meta) else NULL
+
+  if (is.null(taxa_are_rows)) {
+    det <- mfg_detect_orientation(abund_m, tax_ids, sample_ids)
+    if (is.na(det$taxa_are_rows)) {
+      stop("Cannot determine table orientation: row and column names match the ",
+           "taxonomy/metadata equally well (scores ", det$rows_score, " vs ",
+           det$cols_score, ").\nPass taxa_are_rows = TRUE or FALSE explicitly.",
+           call. = FALSE)
+    }
+    taxa_are_rows <- det$taxa_are_rows
+    mfg_log("intake", "orientation_detected",
+            list(taxa_are_rows = taxa_are_rows, evidence = det$evidence))
+  }
+
+  parts <- list(phyloseq::otu_table(abund_m, taxa_are_rows = taxa_are_rows))
+  if (!is.null(tax))  parts <- c(parts, list(phyloseq::tax_table(as.matrix(tax))))
+  if (!is.null(meta)) parts <- c(parts, list(phyloseq::sample_data(as.data.frame(meta))))
+
+  if (!is.null(tree)) {
+    if (is.character(tree)) tree <- ape::read.tree(tree)
+    parts <- c(parts, list(phyloseq::phy_tree(tree)))
+  }
+  if (!is.null(seqs)) {
+    if (is.character(seqs) && length(seqs) == 1 && file.exists(seqs)) {
+      seqs <- Biostrings::readDNAStringSet(seqs)
+    }
+    parts <- c(parts, list(phyloseq::refseq(seqs)))
+  }
+
+  ps <- do.call(phyloseq::phyloseq, parts)
+
+  if (!is.null(tree)) {
+    if (is.null(tree_is_real)) {
+      warning("A tree was supplied but not marked as real or placeholder. ",
+              "Phylogenetic metrics (UniFrac, Faith's PD) will be withheld ",
+              "until you call mfg_mark_tree_real(ps, TRUE). See reference/01.",
+              call. = FALSE)
+    } else {
+      ps <- mfg_mark_tree_real(ps, tree_is_real)
+    }
+  }
+
+  mfg_log("intake", "phyloseq_built",
+          list(taxa = phyloseq::ntaxa(ps), samples = phyloseq::nsamples(ps),
+               has_tree = !is.null(tree), has_seqs = !is.null(seqs),
+               tree_is_real = tree_is_real %||% NA))
+  ps
+}
+
+#' Load a shotgun taxonomic profile as a phyloseq object.
+#'
+#' Wraps read_profile_file + parse_taxonomic_profile from utils.R, attaches
+#' metadata, and records that the values are relative abundances when they are —
+#' which blocks rarefaction and the count-based richness estimators downstream.
+build_phyloseq_from_profile <- function(profile_path, meta = NULL, lineage_col = NULL) {
+  df  <- read_profile_file(profile_path)
+  pp  <- parse_taxonomic_profile(df, lineage_col = lineage_col)
+
+  parts <- list(
+    phyloseq::otu_table(pp$otu, taxa_are_rows = TRUE),
+    phyloseq::tax_table(pp$tax)
+  )
+  if (!is.null(meta)) {
+    if (is.character(meta) && length(meta) == 1) meta <- mfg_read_table(meta)
+    parts <- c(parts, list(phyloseq::sample_data(as.data.frame(meta))))
+  }
+  ps <- do.call(phyloseq::phyloseq, parts)
+  attr(ps, "mfg_is_relative") <- pp$is_relative
+  mfg_registry_set(ps, "is_relative", pp$is_relative)
+
+  mfg_log("intake", "profile_parsed",
+          list(file = basename(profile_path), separator = pp$separator,
+               taxa = phyloseq::ntaxa(ps), samples = phyloseq::nsamples(ps),
+               rows_collapsed = pp$n_rows_collapsed, is_relative = pp$is_relative))
+  ps
+}
+
+#' Load a functional profile (PICRUSt2 / HUMAnN) as a phyloseq object.
+#'
+#' The pathway table takes the place of the OTU table and the pathway
+#' description table takes the place of the taxonomy, giving a `Pathways` rank
+#' (Demo 6). Diversity metrics are meaningful on this only with care — see
+#' reference/08 — but composition, DA and ordination all work unchanged.
+build_phyloseq_functional <- function(abund_path, pathway_tax_path, meta = NULL,
+                                      skip = 1) {
+  otu  <- utils::read.delim(abund_path, skip = skip, row.names = 1,
+                            check.names = FALSE, stringsAsFactors = FALSE)
+  taxa <- utils::read.delim(pathway_tax_path, row.names = 1,
+                            check.names = FALSE, stringsAsFactors = FALSE)
+
+  parts <- list(
+    phyloseq::otu_table(as.matrix(otu), taxa_are_rows = TRUE),
+    phyloseq::tax_table(as.matrix(taxa))
+  )
+  if (!is.null(meta)) {
+    if (is.character(meta) && length(meta) == 1) {
+      meta <- utils::read.csv(meta, header = TRUE, row.names = 1, na.strings = "NA")
+    }
+    parts <- c(parts, list(phyloseq::sample_data(as.data.frame(meta))))
+  }
+  ps <- do.call(phyloseq::phyloseq, parts)
+  attr(ps, "mfg_is_functional") <- TRUE
+  mfg_registry_set(ps, "is_functional", TRUE)
+
+  mfg_log("intake", "functional_profile_loaded",
+          list(file = basename(abund_path), features = phyloseq::ntaxa(ps),
+               samples = phyloseq::nsamples(ps),
+               ranks = paste(phyloseq::rank_names(ps), collapse = ",")))
+  ps
+}
+
+#' Load whatever was handed over, dispatching on file type.
+mfg_load <- function(path, meta = NULL, ...) {
+  ext <- tolower(tools::file_ext(path))
+  if (ext %in% c("rds")) {
+    ps <- readRDS(path)
+    if (!methods::is(ps, "phyloseq")) {
+      stop(path, " holds a ", class(ps)[1], ", not a phyloseq object.", call. = FALSE)
+    }
+    mfg_log("intake", "rds_loaded",
+            list(file = basename(path), taxa = phyloseq::ntaxa(ps),
+                 samples = phyloseq::nsamples(ps)))
+    return(ps)
+  }
+  if (ext %in% c("biom")) {
+    ps <- phyloseq::import_biom(path, ...)
+    mfg_log("intake", "biom_loaded",
+            list(file = basename(path), taxa = phyloseq::ntaxa(ps),
+                 samples = phyloseq::nsamples(ps)))
+    return(ps)
+  }
+  stop("mfg_load handles .RDS and .biom. For a table triplet use ",
+       "build_phyloseq(); for a shotgun profile use build_phyloseq_from_profile().",
+       call. = FALSE)
+}
+
+# ── Validation ───────────────────────────────────────────────────────────────
+
+#' The mandatory pre-analysis check.
+#'
+#' Returns a structured report and, unless `strict = FALSE`, stops on anything
+#' that would invalidate a downstream result. Nothing in MicroFitGut runs before
+#' this passes. Each check maps to a failure mode in reference/01 and
+#' reference/11.
+validate_inputs <- function(ps, group_var = NULL, subject_var = NULL,
+                            strict = TRUE, min_depth_warn = 1000) {
+
+  problems <- character()
+  warnings_ <- character()
+  rep <- list()
+
+  # --- 1. Slots present -----------------------------------------------------
+  rep$has_otu  <- !is.null(phyloseq::otu_table(ps, errorIfNULL = FALSE))
+  rep$has_tax  <- !is.null(phyloseq::tax_table(ps, errorIfNULL = FALSE))
+  rep$has_meta <- !is.null(phyloseq::sample_data(ps, errorIfNULL = FALSE))
+  rep$has_tree <- !is.null(phyloseq::phy_tree(ps, errorIfNULL = FALSE))
+  rep$has_seqs <- !is.null(phyloseq::refseq(ps, errorIfNULL = FALSE))
+  if (!rep$has_otu) problems <- c(problems, "No abundance table (otu_table) present.")
+
+  # --- 2. Dimensions --------------------------------------------------------
+  rep$n_taxa    <- phyloseq::ntaxa(ps)
+  rep$n_samples <- phyloseq::nsamples(ps)
+  rep$ranks     <- if (rep$has_tax) phyloseq::rank_names(ps) else character()
+  if (rep$n_samples < 3) {
+    problems <- c(problems, sprintf("Only %d sample(s). No group comparison is possible.",
+                                    rep$n_samples))
+  }
+
+  # --- 3. Sample IDs match across tables ------------------------------------
+  # phyloseq intersects silently on construction, so a mismatch shows up as
+  # missing samples rather than an error. Reported explicitly here.
+  if (rep$has_meta) {
+    otu_samples  <- phyloseq::sample_names(ps)
+    meta_samples <- rownames(mfg_meta(ps))
+    rep$samples_in_both   <- length(intersect(otu_samples, meta_samples))
+    rep$samples_otu_only  <- setdiff(otu_samples, meta_samples)
+    rep$samples_meta_only <- setdiff(meta_samples, otu_samples)
+    if (length(rep$samples_otu_only) || length(rep$samples_meta_only)) {
+      problems <- c(problems, sprintf(
+        "Sample IDs do not match: %d in abundance table only, %d in metadata only.",
+        length(rep$samples_otu_only), length(rep$samples_meta_only)))
+    }
+  }
+
+  # --- 4. Taxa IDs match ----------------------------------------------------
+  if (rep$has_tax) {
+    otu_taxa <- phyloseq::taxa_names(ps)
+    tax_taxa <- rownames(mfg_tax(ps))
+    rep$taxa_otu_only <- setdiff(otu_taxa, tax_taxa)
+    rep$taxa_tax_only <- setdiff(tax_taxa, otu_taxa)
+    if (length(rep$taxa_otu_only) || length(rep$taxa_tax_only)) {
+      problems <- c(problems, sprintf(
+        "Taxa IDs do not match: %d in abundance table only, %d in taxonomy only.",
+        length(rep$taxa_otu_only), length(rep$taxa_tax_only)))
+    }
+  }
+
+  # --- 5. Are these counts or proportions? ---------------------------------
+  mat <- as(phyloseq::otu_table(ps), "matrix")
+  rep$is_relative <- attr(ps, "mfg_is_relative") %||%
+    mfg_registry_get(ps, "is_relative") %||% looks_like_relative_abundance(mat)
+  rep$all_integer <- all(mat %% 1 == 0, na.rm = TRUE)
+  rep$has_negative <- any(mat < 0, na.rm = TRUE)
+  if (rep$has_negative) {
+    warnings_ <- c(warnings_, paste(
+      "The abundance table contains negative values, so it has already been",
+      "transformed (CLR or similar). Counts-based methods (DESeq2, ANCOM-BC2,",
+      "rarefaction, Chao1/ACE/Fisher) are invalid on this input."))
+  }
+
+  # --- 6. Read depth --------------------------------------------------------
+  depths <- phyloseq::sample_sums(ps)
+  rep$depth_min    <- min(depths)
+  rep$depth_max    <- max(depths)
+  rep$depth_median <- stats::median(depths)
+  rep$depth_mean   <- mean(depths)
+  rep$depth_fold_range <- if (rep$depth_min > 0) rep$depth_max / rep$depth_min else Inf
+  rep$samples_below_warn <- names(depths)[depths < min_depth_warn]
+  rep$zero_depth_samples <- names(depths)[depths == 0]
+
+  if (length(rep$zero_depth_samples)) {
+    problems <- c(problems, sprintf("%d sample(s) have zero total reads: %s",
+      length(rep$zero_depth_samples),
+      paste(utils::head(rep$zero_depth_samples, 5), collapse = ", ")))
+  }
+  if (!rep$is_relative && length(rep$samples_below_warn)) {
+    warnings_ <- c(warnings_, sprintf(
+      "%d sample(s) below %d reads. Decide explicitly whether to drop them (02-qc.R) — %s",
+      length(rep$samples_below_warn), min_depth_warn,
+      paste(utils::head(rep$samples_below_warn, 5), collapse = ", ")))
+  }
+  if (!rep$is_relative && is.finite(rep$depth_fold_range) && rep$depth_fold_range > 10) {
+    warnings_ <- c(warnings_, sprintf(
+      "Depth varies %.0f-fold across samples (%.0f to %.0f). Normalization is not optional here; see reference/03.",
+      rep$depth_fold_range, rep$depth_min, rep$depth_max))
+  }
+
+  # --- 7. Sparsity ----------------------------------------------------------
+  rep$zero_proportion <- mean(mat == 0, na.rm = TRUE)
+  rep$taxa_all_zero   <- sum(phyloseq::taxa_sums(ps) == 0)
+  if (rep$zero_proportion > 0.80) {
+    warnings_ <- c(warnings_, sprintf(
+      "%.1f%% of the table is zeros. Consider zero-inflated models (reference/07) and read reference/11 on structural zeros.",
+      100 * rep$zero_proportion))
+  }
+  if (rep$taxa_all_zero > 0) {
+    warnings_ <- c(warnings_, sprintf(
+      "%d taxa have zero reads in every sample and contribute nothing but multiple-testing burden.",
+      rep$taxa_all_zero))
+  }
+
+  # --- 8. Tree provenance ---------------------------------------------------
+  if (rep$has_tree) {
+    rep$tree_is_real <- mfg_tree_is_real(ps)
+    rep$tree_tips    <- length(phyloseq::phy_tree(ps)$tip.label)
+    rep$tree_rooted  <- ape::is.rooted(phyloseq::phy_tree(ps))
+    if (is.na(rep$tree_is_real)) {
+      warnings_ <- c(warnings_, paste(
+        "A tree is present but its provenance is unrecorded. UniFrac and Faith's PD",
+        "on a placeholder tree return numbers that look valid and encode nothing.",
+        "Confirm with mfg_mark_tree_real(ps, TRUE/FALSE) before using them."))
+    }
+    if (!isTRUE(rep$tree_rooted)) {
+      warnings_ <- c(warnings_, paste(
+        "The tree is unrooted. Faith's PD with include.root = TRUE and unweighted",
+        "UniFrac both depend on rooting; root it (ape::midpoint or phangorn) first."))
+    }
+  }
+
+  # --- 9. Metadata variables ------------------------------------------------
+  if (rep$has_meta) {
+    md <- mfg_meta(ps)
+    rep$variables <- names(md)
+    rep$variable_types <- vapply(md, function(x) class(x)[1], character(1))
+    rep$variable_levels <- lapply(md, function(x) {
+      if (is.numeric(x)) NULL else sort(unique(as.character(x[!is.na(x)])))
+    })
+    rep$variable_n_missing <- vapply(md, function(x) sum(is.na(x)), integer(1))
+
+    # A character column that looks categorical is not a factor yet, so its
+    # reference level is alphabetical rather than chosen. Every model
+    # coefficient is relative to that level, so it must be deliberate.
+    chr_cats <- names(md)[vapply(md, function(x)
+      is.character(x) && length(unique(x[!is.na(x)])) %in% 2:20, logical(1))]
+    rep$unset_factors <- chr_cats
+    if (length(chr_cats)) {
+      warnings_ <- c(warnings_, sprintf(
+        "These are character columns, not factors, so their reference level is alphabetical: %s. Set it deliberately with factor(..., levels = ) — every coefficient is relative to it.",
+        paste(chr_cats, collapse = ", ")))
+    }
+
+    if (!is.null(group_var)) {
+      if (!group_var %in% names(md)) {
+        problems <- c(problems, sprintf("Group variable '%s' is not in the metadata. Available: %s",
+                                        group_var, paste(names(md), collapse = ", ")))
+      } else {
+        g <- md[[group_var]]
+        rep$group_var <- group_var
+        rep$group_n   <- table(g, useNA = "ifany")
+        rep$group_n_missing <- sum(is.na(g))
+        if (any(rep$group_n < 3)) {
+          warnings_ <- c(warnings_, sprintf(
+            "Group sizes are %s. Groups under ~3 support no meaningful test; see reference/12 on power.",
+            paste(sprintf("%s=%d", names(rep$group_n), as.integer(rep$group_n)), collapse = ", ")))
+        }
+        if (length(rep$group_n) >= 2) {
+          bal <- max(rep$group_n) / min(rep$group_n)
+          rep$group_imbalance <- bal
+          if (bal > 3) {
+            warnings_ <- c(warnings_, sprintf(
+              "Group sizes are unbalanced %.1f:1. PERMANOVA and ANOSIM are both sensitive to this; see reference/11.", bal))
+          }
+        }
+      }
+    }
+
+    # --- 10. Repeated measures -------------------------------------------
+    rm_det <- mfg_detect_repeated_measures(md, subject_candidates = subject_var)
+    rep$repeated_measures <- rm_det
+    if (isTRUE(rm_det$repeated)) {
+      warnings_ <- c(warnings_, sprintf(
+        "Repeated measures detected: '%s' has up to %d samples per level across %d levels. Independent-samples tests (Wilcoxon, Kruskal-Wallis, plain PERMANOVA) treat these as independent draws and overstate significance. Use a mixed model or a blocked/strata design; see reference/07.",
+        rm_det$subject_var, rm_det$max_per_subject, rm_det$n_subjects))
+    }
+  }
+
+  rep$problems <- problems
+  rep$warnings <- warnings_
+  rep$passed   <- length(problems) == 0
+
+  mfg_log("intake", "validated", list(
+    passed = rep$passed, n_problems = length(problems), n_warnings = length(warnings_),
+    taxa = rep$n_taxa, samples = rep$n_samples,
+    depth_min = rep$depth_min, depth_max = rep$depth_max,
+    zero_proportion = round(rep$zero_proportion, 4),
+    is_relative = rep$is_relative))
+
+  if (strict && !rep$passed) {
+    stop("Input validation failed:\n  - ", paste(problems, collapse = "\n  - "),
+         "\n\nFix these before any analysis. Pass strict = FALSE only to inspect.",
+         call. = FALSE)
+  }
+  class(rep) <- c("mfg_validation", "list")
+  rep
+}
+
+#' @export
+print.mfg_validation <- function(x, ...) {
+  cat("=== MicroFitGut input validation ===\n")
+  cat(sprintf("%d taxa x %d samples", x$n_taxa, x$n_samples))
+  if (length(x$ranks)) cat(sprintf("   ranks: %s", paste(x$ranks, collapse = ", ")))
+  cat("\n")
+  cat(sprintf("Slots: otu=%s tax=%s meta=%s tree=%s seqs=%s\n",
+              x$has_otu, x$has_tax, x$has_meta, x$has_tree, x$has_seqs))
+  cat(sprintf("Values: %s, %s\n",
+              if (isTRUE(x$is_relative)) "relative abundances" else "read counts",
+              if (isTRUE(x$all_integer)) "all integer" else "non-integer present"))
+  cat(sprintf("Depth: min %.0f | median %.0f | max %.0f  (%.1f-fold range)\n",
+              x$depth_min, x$depth_median, x$depth_max, x$depth_fold_range))
+  cat(sprintf("Sparsity: %.1f%% zeros | %d taxa all-zero\n",
+              100 * x$zero_proportion, x$taxa_all_zero))
+  if (!is.null(x$group_n)) {
+    cat(sprintf("Group '%s': %s\n", x$group_var,
+                paste(sprintf("%s=%d", names(x$group_n), as.integer(x$group_n)),
+                      collapse = ", ")))
+  }
+  if (isTRUE(x$repeated_measures$repeated)) {
+    cat(sprintf("Repeated measures: '%s' (%d levels, up to %d each)\n",
+                x$repeated_measures$subject_var, x$repeated_measures$n_subjects,
+                x$repeated_measures$max_per_subject))
+  }
+  if (length(x$problems)) {
+    cat("\nPROBLEMS (block the analysis):\n")
+    for (p in x$problems) cat("  - ", p, "\n", sep = "")
+  }
+  if (length(x$warnings)) {
+    cat("\nWARNINGS (must be stated in the report):\n")
+    for (w in x$warnings) cat("  - ", w, "\n", sep = "")
+  }
+  if (x$passed && !length(x$warnings)) cat("\nAll checks passed with no warnings.\n")
+  invisible(x)
+}
+
+#' Rarefaction-style depth summary table for the report.
+mfg_depth_table <- function(ps) {
+  d <- phyloseq::sample_sums(ps)
+  data.frame(sample = names(d), depth = as.numeric(d),
+             observed_taxa = as.numeric(phyloseq::estimate_richness(
+               ps, measures = "Observed")[["Observed"]]),
+             stringsAsFactors = FALSE)[order(d), ]
+}

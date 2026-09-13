@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 668" width="1000" height="668" role="img" aria-labelledby="tt dd">
+  <title id="tt">MicroFitGut architecture</title>
+  <desc id="dd">Four input types feed a Claude Code agent flanked by a reference library of 16 documents that decide the method and a script library of 16 R modules that compute it. Five guards can refuse an analysis. Two subagents audit the result. Five kinds of output, each one logged.</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8494A0"/></marker></defs>
+  <rect width="1000" height="668" fill="#FBFCFC"/>
+  <text x="30" y="20" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#7C8B95" letter-spacing="1.2">INPUTS</text>
+  <rect x="30" y="30" width="223" height="66" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="46" y="56" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">phyloseq object</text>
+  <text x="46" y="76" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">.RDS</text>
+  <rect x="269" y="30" width="223" height="66" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="285" y="56" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">Feature table</text>
+  <text x="285" y="76" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">ASV/OTU + taxonomy + metadata</text>
+  <rect x="508" y="30" width="223" height="66" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="524" y="56" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">Shotgun profile</text>
+  <text x="524" y="76" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">MetaPhlAn · Kraken2/Bracken</text>
+  <rect x="747" y="30" width="223" height="66" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="763" y="56" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">Functional profile</text>
+  <text x="763" y="76" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">PICRUSt2 · HUMAnN</text>
+  <path d="M141 96 L 455 130" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M380 96 L 478 130" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M620 96 L 522 130" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M858 96 L 545 130" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="30" y="126" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#7C8B95" letter-spacing="1.2">THE AGENT</text>
+  <rect x="30" y="136" width="292" height="112" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="46" y="162" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">reference/</text>
+  <text x="46" y="182" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">16 documents — which method, and why</text>
+  <text x="46" y="203" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">normalization decision table</text>
+  <text x="46" y="221" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">design → method · pitfalls</text>
+  <text x="46" y="239" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">reporting standards</text>
+  <rect x="350" y="136" width="300" height="112" rx="6" fill="#157F5E" stroke="#0F6349" stroke-width="1.2"/>
+  <text x="500" y="176" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#FFFFFF" text-anchor="middle">Claude Code</text>
+  <text x="500" y="198" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#D9EFE6" text-anchor="middle">orchestrates and interprets</text>
+  <text x="500" y="220" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#D9EFE6" text-anchor="middle">11 stages · analyse + benchmark</text>
+  <rect x="678" y="136" width="292" height="112" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="694" y="162" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">scripts/</text>
+  <text x="694" y="182" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">16 R modules, 221 functions — compute</text>
+  <text x="694" y="203" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">phyloseq · vegan · DESeq2</text>
+  <text x="694" y="221" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">ALDEx2 · ANCOM-BC2 · lme4</text>
+  <text x="694" y="239" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="400" fill="#157F5E">glmmTMB · brms · picante</text>
+  <path d="M322 192 L 346 192" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M678 192 L 654 192" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <path d="M500 248 L 500 278" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="30" y="272" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#7C8B95" letter-spacing="1.2">GUARDS — WHAT IT REFUSES TO DO</text>
+  <rect x="30" y="282" width="940" height="98" rx="6" fill="#FDF6EA" stroke="#EFD9AE" stroke-width="1.2"/>
+  <text x="48.0" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" fill="#A8690C">✕ rarefied → DESeq2</text>
+  <text x="48.0" y="326" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">normalization/test pairing</text>
+  <text x="48.0" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">is checked, not assumed</text>
+  <text x="230.7" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" fill="#A8690C">✕ UniFrac on a fake tree</text>
+  <text x="230.7" y="326" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">tree provenance must be</text>
+  <text x="230.7" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">recorded before use</text>
+  <text x="415.7" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" fill="#A8690C">✕ Kruskal on repeated measures</text>
+  <text x="415.7" y="326" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">several samples per subject</text>
+  <text x="415.7" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">→ mixed model named instead</text>
+  <text x="642.3" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" fill="#A8690C">✕ “composition differed”</text>
+  <text x="642.3" y="326" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">blocked when betadisper</text>
+  <text x="642.3" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">says dispersion is unequal</text>
+  <text x="827.4" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" fill="#A8690C">✕ untraced numbers</text>
+  <text x="827.4" y="326" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">must be in the log</text>
+  <text x="827.4" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">or a saved table</text>
+  <path d="M500 380 L 500 412" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="30" y="406" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#7C8B95" letter-spacing="1.2">AUDIT — BUNDLED SUBAGENTS</text>
+  <rect x="190" y="416" width="290" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="206" y="442" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">statistician</text>
+  <text x="206" y="464" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">design-to-method match, multiple-testing</text>
+  <text x="206" y="481" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">denominators, dispersion, effect sizes</text>
+  <rect x="520" y="416" width="290" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="536" y="442" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">verifier</text>
+  <text x="536" y="464" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">every claim checked against the run's</text>
+  <text x="536" y="481" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">own artifacts before publication</text>
+  <path d="M500 492 L 500 524" stroke="#8494A0" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="30" y="518" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#7C8B95" letter-spacing="1.2">OUTPUTS — EVERY ONE LOGGED</text>
+  <rect x="30" y="528" width="178" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="46" y="554" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">figures/</text>
+  <text x="46" y="576" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">publication sizes,</text>
+  <text x="46" y="593" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">CVD-safe palette</text>
+  <rect x="220" y="528" width="178" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="236" y="554" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">tables/</text>
+  <text x="236" y="576" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">every result as</text>
+  <text x="236" y="593" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">a CSV</text>
+  <rect x="410" y="528" width="178" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="426" y="554" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">run_log.csv</text>
+  <text x="426" y="576" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">every step, parameter</text>
+  <text x="426" y="593" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">and random seed</text>
+  <rect x="600" y="528" width="178" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="616" y="554" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">manifest.csv</text>
+  <text x="616" y="576" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">index of everything</text>
+  <text x="616" y="593" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">produced</text>
+  <rect x="790" y="528" width="180" height="76" rx="6" fill="#FFFFFF" stroke="#DFE5EA" stroke-width="1.2"/>
+  <text x="806" y="554" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#1B2A33">report.html</text>
+  <text x="806" y="576" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">provenance, QC and</text>
+  <text x="806" y="593" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#5A6C77">methods generated</text>
+  <text x="500" y="640" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#7C8B95" text-anchor="middle">Every number in the report traces to run_log.csv or a file in tables/ — or it does not get reported.</text>
+</svg>

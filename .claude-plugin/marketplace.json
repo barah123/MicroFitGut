@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "microfitgut",
+  "description": "MicroFitGut — downstream microbiome analysis for Claude Code. 16S amplicon and shotgun metagenomics, from feature table to reproducible report.",
+  "owner": {
+    "name": "Philip Appiah"
+  },
+  "plugins": [
+    {
+      "name": "microfitgut",
+      "source": "./",
+      "description": "Downstream microbiome analysis agent: QC, normalization, alpha and beta diversity, differential abundance, mixed and zero-inflated models, publication figures, and a traceable report. Includes benchmark mode for reproducing published analyses.",
+      "version": "1.0.0",
+      "category": "science",
+      "keywords": [
+        "microbiome",
+        "metagenomics",
+        "16S",
+        "phyloseq",
+        "bioinformatics"
+      ]
+    }
+  ]
+}
