@@ -388,6 +388,50 @@ The exercise also found and fixed **six bugs in MicroFitGut itself**, including 
 structurally biased rarefaction-plateau criterion, a likelihood-ratio test that
 silently returned NULL, and log events that never reached disk.
 
+
+### Benchmark against published studies
+
+Beyond the course regression, MicroFitGut is benchmarked against a **set of ten
+published studies — five 16S amplicon, five shotgun metagenomic** — chosen to
+exercise every input format and design feature the tool claims to handle. This is
+a purposive coverage matrix, not a sample: it tests the software, so the results
+must not be read as a rate at which the literature reproduces.
+
+Full reports are in [`validation/`](validation/); the manifest is
+[`validation/validation-set-manifest.csv`](validation/validation-set-manifest.csv)
+(and `.xlsx`).
+
+**Neither the papers nor the datasets are redistributed here.** Every study is
+identified by its DOI or accession so it can be retrieved from source, which keeps
+provenance intact and avoids republishing material under licences that do not
+permit it. Each report carries the code needed to reproduce it.
+
+| # | ID | Tech | Study | Journal, year | Data format | Data source | Verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | **A0** | 16S | Testing the "Grandma Hypothesis": Characterizing Skin Mic… | Journal of Microbiology & Biolog, 2020 | phyloseq .RDS (course-processed) | [PRJNA553551](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) | Partially reproduced |
+| 1 | **S1** | Shotgun | Colorectal Cancer and the Human Gut Microbiome: Reproduci… | PloS one, 2016 | MetaPhlAn taxonomic profile + HUMAnN fun | [VogtmannE_2016](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Reproduced |
+| 2 | **S4** | Shotgun | Altered Gut Microbiome Profile in Patients With Pulmonary… | Hypertension, 2020 | BIOM | [10.5061/dryad.stqjq2c03](https://doi.org/10.5061/dryad.stqjq2c03) | _pending_ |
+| 3 | **A3** | 16S | The microbiome of the ant‐built home: the microbial commu… | Ecosphere, 2017 | BIOM | [10.5061/dryad.ph2c5](https://doi.org/10.5061/dryad.ph2c5) | _pending_ |
+| 4 | **A1** | 16S | Unique bacterial assembly, composition, and interactions … | Journal of Experimental Botany, 2020 | phyloseq/R object (.RDS/.RData) | [10.5061/dryad.7wm37pvnk](https://doi.org/10.5061/dryad.7wm37pvnk) | _pending_ |
+| 5 | **S3** | Shotgun | The dynamics of the human infant gut microbiome in develo… | Cell host & microbe, 2015 | MetaPhlAn taxonomic profile + HUMAnN fun | [KosticAD_2015](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
+| 6 | **S2** | Shotgun | Gut microbiome development along the colorectal adenoma-c… | Nature communications, 2015 | MetaPhlAn taxonomic profile + HUMAnN fun | [FengQ_2015](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
+| 7 | **S5** | Shotgun | Integrated Metagenomic and Metabolomic Analysis of In Vit… | Metabolites, 2024 | MetaPhlAn profile; HUMAnN functional pro | [10.5281/zenodo.13917959](https://doi.org/10.5281/zenodo.13917959) | _pending_ |
+| 8 | **A2** | 16S | Comparative analysis of microbiota along the length of th… | Ecology and Evolution, 2019 | BIOM | [10.5061/dryad.931zcrjfn](https://doi.org/10.5061/dryad.931zcrjfn) | _pending_ |
+| 9 | **A4** | 16S | Gut microbiota from multiple sclerosis patients enables s… | Proceedings of the National Acad, 2017 | OTU/ASV table (CSV/TSV/XLS) | [10.7272/Q6RX997G](https://doi.org/10.7272/Q6RX997G) | _pending_ |
+
+Two studies are complete. **A0 (Pérez-Losada)** returned *partially reproduced*:
+the alpha-diversity finding survived a mixed model, but a significant PERMANOVA
+was accompanied by heterogeneous dispersion (betadisper p = 0.001), so the
+composition claim is not licensed by the test used. **S1 (Vogtmann)** returned
+*reproduced* — all eight claims held, through a different taxonomic profiler.
+
+That contrast is the point of the matrix: a clean study yields a clean verdict,
+so the tool is not manufacturing disagreement.
+
+Running these has so far exposed **ten defects in MicroFitGut**, every one biased
+toward reporting non-reproduction — the direction that would have flattered the
+tool. All are fixed, and all were fixed before any corpus study was scored.
+
 ---
 
 ## What ships
