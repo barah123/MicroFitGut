@@ -1,6 +1,6 @@
 {
   "name": "microfitgut",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Downstream microbiome analysis agent for 16S amplicon and shotgun metagenomics. Takes a phyloseq object, ASV/taxonomy/metadata triplet, MetaPhlAn or Kraken2 profile, or PICRUSt2/HUMAnN functional table through QC, normalization, alpha and beta diversity, differential abundance, mixed and zero-inflated models, and a reproducible report. Ships 16 R modules (221 functions), 16 reference documents encoding the analytical decisions, and two auditing subagents. Also runs in benchmark mode: reanalyse a published dataset, measure concordance with the paper, and attribute any divergence to a specific analytical choice.",
   "author": {
     "name": "Philip Appiah"
