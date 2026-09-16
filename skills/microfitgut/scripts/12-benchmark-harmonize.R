@@ -96,6 +96,14 @@ MFG_UNRESOLVED_LABELS <- c("", "NA", "na", "unclassified", "Unclassified",
 harmonize_taxon <- function(x, synonyms = MFG_TAXON_SYNONYMS,
                             case_insensitive = TRUE) {
   x <- as.character(x)
+  # An empty vector must stay empty. `%||%` treats zero length as missing, so
+  # `x %||% ""` below returns "", nzchar("") is FALSE, and assigning at index
+  # TRUE GROWS a zero-length vector to length 1 — an empty input came back as a
+  # single NA, and every caller then built a data frame with mismatched columns.
+  # The case that hit this is the one that matters most: a reanalysis finding no
+  # significant taxa is the strongest form of non-reproduction, and it crashed
+  # instead of scoring zero.
+  if (!length(x)) return(character(0))
   x <- sub("^[dkpcofgst]__", "", trimws(x))
   x <- gsub("[\\[\\]]", "", x, perl = TRUE)
   x <- gsub("_", " ", x)

@@ -225,12 +225,32 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
     if (!is.null(f$value)) baseline[[nm]] <- f$value
   }
   # Sensible baseline for anything absent, so the replication run is runnable.
-  defaults <- list(prevalence_filter = 0.10, min_depth = 0, normalization = "tss",
+  # normalization is deliberately NOT fixed here: it depends on the DA method.
+  defaults <- list(prevalence_filter = 0.10, min_depth = 0,
                    taxonomic_level = "ASV", beta_distance = "bray",
                    da_method = "ancombc2", fdr_method = "BH",
                    alpha_threshold = 0.05, random_effects = "none")
   for (nm in names(defaults)) {
     if (is.null(baseline[[nm]])) baseline[[nm]] <- defaults[[nm]]
+  }
+  # Every count-based DA method requires raw counts; the rank-based ones require
+  # a transform and refuse raw. A baseline that pairs a DA method with a
+  # normalization it does not accept is refused before it computes anything, so
+  # the default is derived from the method rather than hardcoded. Hardcoding
+  # "tss" alongside a default of ancombc2 made every DA benchmark unrunnable.
+  da_norms <- function(m) MFG_VALID_NORMALIZATION[[paste0("da_", m)]]
+  if (is.null(baseline$normalization)) {
+    vn <- da_norms(baseline$da_method)
+    baseline$normalization <- if (length(vn)) vn[[1]] else "tss"
+  } else {
+    vn <- da_norms(baseline$da_method)
+    if (length(vn) && !baseline$normalization %in% vn) {
+      warning(sprintf(paste("The card pairs normalization '%s' with da_method",
+        "'%s', which accepts only: %s. Every DA run will be refused. Check the",
+        "extraction, or state the DA method the paper actually used."),
+        baseline$normalization, baseline$da_method,
+        paste(vn, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # Which axes to sweep: those the paper left inferred or absent.
@@ -256,6 +276,7 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
   # contrast against the baseline.
   levels_by_axis <- list()
   unrunnable <- list()
+  paired <- list()
   for (ax in axes) {
     opts <- MFG_STUDY_CARD_FIELDS[[ax]]$options
     # Rarefaction depth options come from this dataset's depth distribution, not
@@ -263,6 +284,16 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
     if (identical(ax, "rarefaction_depth") && !is.null(ps)) {
       d <- phyloseq::sample_sums(ps)
       opts <- unique(round(c(min(d), stats::quantile(d, c(0.10, 0.25), names = FALSE))))
+    }
+    # Varying normalization while holding the DA method fixed only makes sense
+    # over normalizations that method accepts. The rest are refusals, not runs.
+    if (identical(ax, "normalization")) {
+      vn <- da_norms(baseline$da_method)
+      if (length(vn)) {
+        blocked <- setdiff(as.character(opts), as.character(vn))
+        if (length(blocked)) unrunnable[[ax]] <- blocked
+        opts <- opts[as.character(opts) %in% as.character(vn)]
+      }
     }
     # A level this dataset cannot run is not a level. UniFrac against an object
     # with no tree, or a rank the taxonomy table does not carry, puts runs in the
@@ -330,6 +361,20 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
                                              level = as.character(o),
                                              stringsAsFactors = FALSE)
       p <- baseline; p[[ax]] <- o
+      # Swapping the DA method can invalidate the baseline normalization —
+      # ancombc2 requires raw, kruskal refuses it. Carrying the baseline
+      # normalization across would make every such run a refusal, so the
+      # normalization moves with it. That is two changes in one run, which
+      # weakens the isolation the design depends on, so it is recorded and
+      # printed rather than done quietly.
+      if (identical(ax, "da_method")) {
+        vn <- da_norms(o)
+        if (length(vn) && !p$normalization %in% vn) {
+          paired[[rid]] <- sprintf("normalization %s -> %s (required by %s)",
+                                   p$normalization, vn[[1]], o)
+          p$normalization <- vn[[1]]
+        }
+      }
       params[[rid]] <- p
     }
     if (length(runs) >= max_runs) break
@@ -378,7 +423,7 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
 
   out <- list(grid = grid, params = params, baseline = baseline, axes = axes,
               n_truncated = truncated, untested = untested,
-              unrunnable = unrunnable,
+              unrunnable = unrunnable, paired = paired,
               axes_dropped = axes_dropped, n_total_levels = n_total_levels)
   class(out) <- c("mfg_sweep_grid", "list")
   out
@@ -409,6 +454,11 @@ print.mfg_sweep_grid <- function(x, ...) {
     }
     cat("  Report these separately from untested levels. They were never candidates,\n")
     cat("  so they do not belong in the denominator of a fragility statistic.\n")
+  }
+  if (length(x$paired)) {
+    cat("\n! Runs where a second parameter had to move as well:\n")
+    for (r in names(x$paired)) cat(sprintf("    %-22s %s\n", r, x$paired[[r]]))
+    cat("  These runs change two things, so their axis is not cleanly isolated.\n")
   }
   if (length(x$axes_dropped)) {
     cat(sprintf("\n!! %s got no run at all and cannot be attributed.\n",
