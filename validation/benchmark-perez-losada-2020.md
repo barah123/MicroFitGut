@@ -11,7 +11,7 @@ paper's stated claims, and reporting which survive.
 | **Raw data** | NCBI SRA BioProject [PRJNA553551](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) |
 | **Analysed** | `dataset/ps.RDS` — the processed feature table, 619 taxa × 344 samples, 128 participants, with phylogeny |
 | **Hypothesis** | Body regions washed less often ("grandma hotspots": behind the ears, between the toes, navel) host different microbial communities from regions washed more often (forearms, calves) |
-| **Verdict** | **Partially reproduced** |
+| **Verdict** | **Partially reproduced** (sweep: 16 configurations, all executed) |
 
 ---
 
@@ -166,6 +166,74 @@ None of this says the paper is wrong. It is a teaching paper reporting what
 students found with the tools they were given, and it says so. What the benchmark
 establishes is which of its conclusions are robust to defensible analytical
 choices and which depend on them — and that is a different, more useful question.
+
+---
+
+## 4b. Sensitivity sweep — 16 configurations
+
+The paper leaves 15 analytical parameters unstated or only inferable. The sweep
+varies them one at a time from the reconstruction baseline, so each axis's effect
+is isolated. **All 16 configurations executed**, including weighted and unweighted
+UniFrac — this dataset ships a phylogeny with 619 tips for 619 taxa, asserted as
+genuine via `mfg_mark_tree_real()` and recorded in the run log.
+
+| Run | Recovery | Significant genera |
+|---|---|---|
+| baseline (ANCOM-BC2, prevalence 0.10) | 0.40 | 19 |
+| `da_method=aldex2` | 0.60 | 40 |
+| `da_method=deseq2` | 0.60 | 33 |
+| `da_method=kruskal` | 0.60 | 60 |
+| `random_effects=subject` | **0.20** | **9** |
+| `prevalence_filter=0` | **0.80** | 43 |
+| `prevalence_filter=0.05` | 0.70 | 33 |
+| `prevalence_filter=0.2` | 0.30 | 8 |
+| `fdr_method=holm` | 0.30 | 10 |
+| `fdr_method=BY` | 0.30 | 15 |
+| `min_depth`, `rarefaction_depth`, `beta_distance` | 0.40 | 18–19 |
+
+Across defensible choices, recovery of the paper's genera ranges from **20% to
+80%**, and the count of significant genera from **8 to 60**.
+
+### Attribution
+
+| Metric | Dominant axis | Spread | Second | Ratio | Confidence |
+|---|---|---|---|---|---|
+| Significant genera | `da_method` | 41 | `prevalence_filter` (35) | 1.17 | **weak — not distinguishable** |
+| Recovery rate | `prevalence_filter` | 0.50 | `random_effects` (0.20) | 2.50 | **clear** |
+
+The tool names a cause for one metric and refuses for the other in the same run.
+For the count of significant genera, the method and the filter move it almost
+equally, so no single cause is named. For recovery of the paper's named genera,
+the prevalence filter dominates by a factor of 2.5 and is named.
+
+### What the sweep changes about the interpretation
+
+**The prevalence filter, not the statistics, drives most of the disagreement.**
+At the baseline filter of 0.10, three of the paper's ten genera are recovered. At
+no filter, **eight of ten are**. The genera that "failed to reproduce" were
+largely never tested — they are rare enough to be removed before any test ran.
+
+This is the `filtering.prevalence` signature in the discrepancy rubric exactly:
+*missed taxa turn out never to have been tested*. It is a different finding from
+a statistical disagreement, and a much less damaging one for the paper. The
+earlier section of this report, written from the baseline alone, understated
+this — which is precisely why the sweep exists.
+
+**Modelling repeated measures costs the most of any single correction.** Adding
+`(1 | patient)` halves the significant genera, 19 → 9, and halves recovery,
+0.40 → 0.20. It is the only axis that moves results in the conservative
+direction as strongly as the filter moves them in the permissive direction.
+
+### Configuration fragility
+
+The paper's count claim — approximately ten genera — **holds in 3 of 16
+defensible configurations (19%)**, and only under choices more conservative than
+the baseline: a participant random effect, Holm correction, or a strict
+prevalence filter.
+
+That is the honest summary of this claim: not refuted, but reproducible only in
+a minority of reasonable analyses, and the specific ten genera named are mostly
+a product of where the prevalence threshold was set.
 
 ---
 
