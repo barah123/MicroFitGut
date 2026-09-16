@@ -582,6 +582,24 @@ score_claims <- function(claims, evidence = list(),
         }
       }
 
+    } else if (identical(cl$type, "da_null")) {
+      da <- evidence$da
+      if (is.null(da)) { detail <- "no DA result supplied" }
+      else {
+        m <- match_taxa(cl$taxon, as.character(da$taxon), synonyms = synonyms)
+        if (!m$n_matched) {
+          # Absent from the result table is not the same as tested-and-null.
+          status <- "not_evaluable"
+          detail <- "taxon not present in the reanalysis result table - cannot confirm it was tested"
+        } else {
+          hit <- da[as.character(da$taxon) == m$matches$reanalysis[1], , drop = FALSE]
+          sig <- isTRUE(hit$significant[1])
+          status <- if (!sig) "held" else "failed"
+          observed <- if (sig) "significant" else "not significant"
+          detail <- sprintf("paper: tested, not significant; reanalysis: %s", observed)
+        }
+      }
+
     } else if (identical(cl$type, "dominance")) {
       ab <- evidence$abundance
       if (is.null(ab) || !cl$group %in% names(ab)) {

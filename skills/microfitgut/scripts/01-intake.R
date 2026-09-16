@@ -381,15 +381,28 @@ validate_inputs <- function(ps, group_var = NULL, subject_var = NULL,
       } else {
         g <- md[[group_var]]
         rep$group_var <- group_var
-        rep$group_n   <- table(g, useNA = "ifany")
+        rep$group_n   <- table(g, useNA = "ifany")   # display: missing stays visible
         rep$group_n_missing <- sum(is.na(g))
-        if (any(rep$group_n < 3)) {
+        # Balance and minimum-size checks run over REAL levels only. Counting NA
+        # as a level reports a balanced design as lopsided (52/52/6 reads as
+        # 8.7:1) and, worse, buries the thing that actually matters: samples with
+        # no group assignment are dropped silently by almost every test.
+        gn <- table(g[!is.na(g)])
+        rep$group_n_observed <- gn
+        if (rep$group_n_missing > 0) {
+          warnings_ <- c(warnings_, sprintf(paste(
+            "%d of %d samples have no value for '%s'. Most tests drop them without",
+            "saying so, which changes n and the multiple-testing denominator.",
+            "Exclude them explicitly and log the rule, or recode them."),
+            rep$group_n_missing, length(g), group_var))
+        }
+        if (length(gn) && any(gn < 3)) {
           warnings_ <- c(warnings_, sprintf(
             "Group sizes are %s. Groups under ~3 support no meaningful test; see reference/12 on power.",
-            paste(sprintf("%s=%d", names(rep$group_n), as.integer(rep$group_n)), collapse = ", ")))
+            paste(sprintf("%s=%d", names(gn), as.integer(gn)), collapse = ", ")))
         }
-        if (length(rep$group_n) >= 2) {
-          bal <- max(rep$group_n) / min(rep$group_n)
+        if (length(gn) >= 2) {
+          bal <- max(gn) / min(gn)
           rep$group_imbalance <- bal
           if (bal > 3) {
             warnings_ <- c(warnings_, sprintf(

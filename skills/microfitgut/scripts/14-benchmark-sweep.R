@@ -117,6 +117,11 @@ study_field <- function(value = NULL, confidence = c("stated", "inferred", "abse
 #' --------------  ----------------------------------------------------------
 #' da_count        n, comparator ("eq","lte","gte","approx"); tolerance for approx
 #' da_direction    taxon, higher_in
+#' da_null         taxon — the paper TESTED this taxon and found no difference.
+#'                 A negative result is a claim like any other, and the commonest
+#'                 one in a reproducibility study. Without this type it can only
+#'                 be recorded as 'unscored', which blocks a verdict the evidence
+#'                 could actually settle.
 #' dominance       taxon, group
 #' alpha           direction ("higher","lower","none"), groups
 #' beta            differs (TRUE/FALSE)
@@ -125,7 +130,7 @@ study_field <- function(value = NULL, confidence = c("stated", "inferred", "abse
 #' `unscored` is the escape valve, and it is the honest answer for a qualitative
 #' claim. What it must never do is disappear: an unscored claim blocks a clean
 #' "reproduced" verdict rather than being silently dropped.
-study_claim <- function(id, type = c("da_count", "da_direction", "dominance",
+study_claim <- function(id, type = c("da_count", "da_direction", "da_null", "dominance",
                                      "alpha", "beta", "unscored"),
                         contrast = NULL, evidence = NULL, location = NULL, ...) {
   type <- match.arg(type)
@@ -133,6 +138,7 @@ study_claim <- function(id, type = c("da_count", "da_direction", "dominance",
   required <- switch(type,
     da_count     = c("n", "comparator"),
     da_direction = c("taxon", "higher_in"),
+    da_null      = c("taxon"),
     dominance    = c("taxon", "group"),
     alpha        = c("direction"),
     beta         = c("differs"),
