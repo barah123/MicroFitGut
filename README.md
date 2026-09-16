@@ -406,18 +406,18 @@ identified by its DOI or accession so it can be retrieved from source, which kee
 provenance intact and avoids republishing material under licences that do not
 permit it. Each report carries the code needed to reproduce it.
 
-| # | ID | Tech | Study | Journal, year | Data format | Data source | Verdict |
-|---|---|---|---|---|---|---|---|
-| 0 | **A0** | 16S | Testing the "Grandma Hypothesis": Characterizing Skin Mic… | Journal of Microbiology & Biolog, 2020 | phyloseq .RDS (course-processed) | [PRJNA553551](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) | Partially reproduced |
-| 1 | **S1** | Shotgun | Colorectal Cancer and the Human Gut Microbiome: Reproduci… | PloS one, 2016 | MetaPhlAn taxonomic profile + HUMAnN fun | [VogtmannE_2016](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Reproduced |
-| 2 | **S4** | Shotgun | Altered Gut Microbiome Profile in Patients With Pulmonary… | Hypertension, 2020 | BIOM | [10.5061/dryad.stqjq2c03](https://doi.org/10.5061/dryad.stqjq2c03) | _pending_ |
-| 3 | **A3** | 16S | The microbiome of the ant‐built home: the microbial commu… | Ecosphere, 2017 | BIOM | [10.5061/dryad.ph2c5](https://doi.org/10.5061/dryad.ph2c5) | _pending_ |
-| 4 | **A1** | 16S | Unique bacterial assembly, composition, and interactions … | Journal of Experimental Botany, 2020 | phyloseq/R object (.RDS/.RData) | [10.5061/dryad.7wm37pvnk](https://doi.org/10.5061/dryad.7wm37pvnk) | _pending_ |
-| 5 | **S3** | Shotgun | The dynamics of the human infant gut microbiome in develo… | Cell host & microbe, 2015 | MetaPhlAn taxonomic profile + HUMAnN fun | [KosticAD_2015](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
-| 6 | **S2** | Shotgun | Gut microbiome development along the colorectal adenoma-c… | Nature communications, 2015 | MetaPhlAn taxonomic profile + HUMAnN fun | [FengQ_2015](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
-| 7 | **S5** | Shotgun | Integrated Metagenomic and Metabolomic Analysis of In Vit… | Metabolites, 2024 | MetaPhlAn profile; HUMAnN functional pro | [10.5281/zenodo.13917959](https://doi.org/10.5281/zenodo.13917959) | _pending_ |
-| 8 | **A2** | 16S | Comparative analysis of microbiota along the length of th… | Ecology and Evolution, 2019 | BIOM | [10.5061/dryad.931zcrjfn](https://doi.org/10.5061/dryad.931zcrjfn) | _pending_ |
-| 9 | **A4** | 16S | Gut microbiota from multiple sclerosis patients enables s… | Proceedings of the National Acad, 2017 | OTU/ASV table (CSV/TSV/XLS) | [10.7272/Q6RX997G](https://doi.org/10.7272/Q6RX997G) | _pending_ |
+| # | ID | Tech | Study | Journal, year | Paper DOI | Data repository | Accession | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| 0 | **A0** | 16S | Testing the "Grandma Hypothesis": Characteriz… | Journal of Microbiology & Bi, 2020 | [10.1128/jmbe.v21i1.2010](https://doi.org/10.1128/jmbe.v21i1.2010) | NCBI SRA | [`PRJNA553551`](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) | Partially reproduced |
+| 1 | **S1** | Shotgun | Colorectal Cancer and the Human Gut Microbiom… | PloS one, 2016 | [10.1371/journal.pone.0155362](https://doi.org/10.1371/journal.pone.0155362) | curatedMetagenomicData | [`VogtmannE_2016`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Reproduced |
+| 2 | **S4** | Shotgun | Altered Gut Microbiome Profile in Patients Wi… | Hypertension, 2020 | [10.1161/hypertensionaha.119.14294](https://doi.org/10.1161/hypertensionaha.119.14294) | Dryad | [`10.5061/dryad.stqjq2c03`](https://doi.org/10.5061/dryad.stqjq2c03) | _pending_ |
+| 3 | **A3** | 16S | The microbiome of the ant‐built home: the mic… | Ecosphere, 2017 | [10.1002/ecs2.1639](https://doi.org/10.1002/ecs2.1639) | Dryad | [`10.5061/dryad.ph2c5`](https://doi.org/10.5061/dryad.ph2c5) | _pending_ |
+| 4 | **A1** | 16S | Unique bacterial assembly, composition, and i… | Journal of Experimental Bota, 2020 | [10.1093/jxb/erz572](https://doi.org/10.1093/jxb/erz572) | Dryad | [`10.5061/dryad.7wm37pvnk`](https://doi.org/10.5061/dryad.7wm37pvnk) | _pending_ |
+| 5 | **S3** | Shotgun | The dynamics of the human infant gut microbio… | Cell host & microbe, 2015 | [10.1016/j.chom.2015.01.001](https://doi.org/10.1016/j.chom.2015.01.001) | curatedMetagenomicData | [`KosticAD_2015`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
+| 6 | **S2** | Shotgun | Gut microbiome development along the colorect… | Nature communications, 2015 | [10.1038/ncomms7528](https://doi.org/10.1038/ncomms7528) | curatedMetagenomicData | [`FengQ_2015`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | _pending_ |
+| 7 | **S5** | Shotgun | Integrated Metagenomic and Metabolomic Analys… | Metabolites, 2024 | [10.3390/metabo14120713](https://doi.org/10.3390/metabo14120713) | Zenodo | [`10.5281/zenodo.13917959`](https://doi.org/10.5281/zenodo.13917959) | _pending_ |
+| 8 | **A2** | 16S | Comparative analysis of microbiota along the … | Ecology and Evolution, 2019 | [10.1002/ece3.5789](https://doi.org/10.1002/ece3.5789) | Dryad | [`10.5061/dryad.931zcrjfn`](https://doi.org/10.5061/dryad.931zcrjfn) | _pending_ |
+| 9 | **A4** | 16S | Gut microbiota from multiple sclerosis patien… | Proceedings of the National , 2017 | [10.1073/pnas.1711233114](https://doi.org/10.1073/pnas.1711233114) | UCSF Dash | [`10.7272/Q6RX997G`](https://doi.org/10.7272/Q6RX997G) | _pending_ |
 
 Two studies are complete. **A0 (Pérez-Losada)** returned *partially reproduced*:
 the alpha-diversity finding survived a mixed model, but a significant PERMANOVA
