@@ -299,11 +299,20 @@ concordance_da <- function(published_taxa, reanalysis_taxa,
     not_tested <- testable$unmatched_published
   }
 
+  # Jaccard must use the SAME matcher as recovery. Comparing harmonised full
+  # names with intersect() only ever finds exact string equality, so a pair that
+  # match_taxa() resolved by genus truncation ("Bacteroides" vs "Bacteroides
+  # ovatus et rel.") counts as recovered and simultaneously as not shared — two
+  # numbers in one output that contradict each other, with the disagreement
+  # growing exactly when the two naming schemes differ most.
   pub_h <- stats::na.omit(harmonize_taxon(published_taxa, synonyms))
   rea_h <- stats::na.omit(harmonize_taxon(reanalysis_taxa, synonyms))
-  inter <- intersect(pub_h, rea_h)
-  un    <- union(pub_h, rea_h)
-  jaccard <- if (length(un)) length(inter) / length(un) else NA_real_
+  n_inter <- recovery$n_matched %||% 0L
+  n_union <- length(pub_h) + length(rea_h) - n_inter
+  inter <- if (!is.null(recovery$matches) && nrow(recovery$matches))
+             recovery$matches$published else character(0)
+  un <- seq_len(max(n_union, 0L))
+  jaccard <- if (n_union > 0) n_inter / n_union else NA_real_
 
   effect_cor <- NA_real_; n_effect_shared <- 0L
   if (!is.null(published_effects) && !is.null(reanalysis_effects)) {
@@ -482,6 +491,177 @@ print.mfg_concordance_profile <- function(x, ...) {
 
 # ── Overall verdict ──────────────────────────────────────────────────────────
 
+#' Mean relative abundance per taxon per group.
+#'
+#' The evidence a `dominance` claim is scored against.
+group_mean_abundance <- function(ps, group_var) {
+  rel <- phyloseq::transform_sample_counts(ps, function(x) {
+    s <- sum(x); if (s > 0) x / s else x })
+  mat <- as(phyloseq::otu_table(rel), "matrix")
+  if (!phyloseq::taxa_are_rows(rel)) mat <- t(mat)
+  g <- as.character(mfg_meta(ps)[[group_var]])
+  out <- vapply(split(seq_along(g), g), function(idx)
+    rowMeans(mat[, idx, drop = FALSE]), numeric(nrow(mat)))
+  as.data.frame(out)
+}
+
+#' Score the paper's stated claims against the reanalysis artifacts.
+#'
+#' Four outcomes, and the last two are the point:
+#'
+#' held           the claim reproduced
+#' failed         the claim did not reproduce
+#' unscored       qualitative — cannot be machine-checked, needs adjudication
+#' not_evaluable  the evidence to test it was not supplied, or the analysis
+#'                given describes a different contrast from the one claimed
+#'
+#' `not_evaluable` on a contrast mismatch is the guard that matters. A paper
+#' claims "ten taxa changed after the diet switch"; a reanalysis of the baseline
+#' between-population contrast returns a taxon count too. Scoring one against the
+#' other is arithmetic that succeeds and means nothing.
+score_claims <- function(claims, evidence = list(),
+                         synonyms = MFG_TAXON_SYNONYMS) {
+  if (inherits(claims, "mfg_study_claim")) claims <- list(claims)
+  if (!length(claims)) return(NULL)
+
+  ev_contrast <- evidence$contrast %||% NA_character_
+  rows <- lapply(claims, function(cl) {
+    status <- "not_evaluable"; observed <- NA_character_; detail <- ""
+
+    if (identical(cl$type, "unscored")) {
+      status <- "unscored"
+      detail <- "qualitative claim — record an explicit adjudication"
+      return(data.frame(id = cl$id, type = cl$type,
+                        contrast = cl$contrast %||% NA_character_,
+                        status = status, observed = observed, detail = detail,
+                        stringsAsFactors = FALSE))
+    }
+
+    if (!is.na(ev_contrast) && !identical(cl$contrast, ev_contrast)) {
+      detail <- sprintf("claim is about '%s'; evidence describes '%s'",
+                        cl$contrast, ev_contrast)
+      return(data.frame(id = cl$id, type = cl$type, contrast = cl$contrast,
+                        status = "not_evaluable", observed = NA_character_,
+                        detail = detail, stringsAsFactors = FALSE))
+    }
+
+    if (identical(cl$type, "da_count")) {
+      da <- evidence$da
+      if (is.null(da)) { detail <- "no DA result supplied" }
+      else {
+        n_obs <- if ("significant" %in% names(da)) sum(da$significant %in% TRUE) else nrow(da)
+        tol <- cl$tolerance %||% max(2, ceiling(0.25 * cl$n))
+        ok <- switch(cl$comparator,
+          eq = n_obs == cl$n, lte = n_obs <= cl$n, gte = n_obs >= cl$n,
+          approx = abs(n_obs - cl$n) <= tol, NA)
+        status <- if (isTRUE(ok)) "held" else "failed"
+        observed <- as.character(n_obs)
+        detail <- sprintf("paper %s %s, reanalysis %d%s", cl$comparator, cl$n, n_obs,
+                          if (identical(cl$comparator, "approx"))
+                            sprintf(" (tolerance %d)", tol) else "")
+      }
+
+    } else if (identical(cl$type, "da_direction")) {
+      da <- evidence$da
+      if (is.null(da) || is.null(evidence$positive_effect_group)) {
+        detail <- "needs evidence$da and evidence$positive_effect_group"
+      } else {
+        m <- match_taxa(cl$taxon, as.character(da$taxon), synonyms = synonyms)
+        if (!m$n_matched) { status <- "failed"; detail <- "taxon not found in DA result" }
+        else {
+          hit <- da[as.character(da$taxon) == m$matches$reanalysis[1], , drop = FALSE]
+          eff <- hit$effect %||% hit$log2FoldChange %||% NA_real_
+          obs_group <- if (is.na(eff[1])) NA_character_
+                       else if (eff[1] > 0) evidence$positive_effect_group
+                       else setdiff(evidence$groups %||% character(0),
+                                    evidence$positive_effect_group)[1]
+          observed <- obs_group %||% NA_character_
+          status <- if (identical(obs_group, cl$higher_in)) "held" else "failed"
+          detail <- sprintf("paper says higher in %s; reanalysis effect %.3f -> %s",
+                            cl$higher_in, eff[1], observed)
+        }
+      }
+
+    } else if (identical(cl$type, "dominance")) {
+      ab <- evidence$abundance
+      if (is.null(ab) || !cl$group %in% names(ab)) {
+        detail <- "needs evidence$abundance with a column for this group"
+      } else {
+        v <- ab[[cl$group]]; names(v) <- rownames(ab)
+        top <- names(sort(v, decreasing = TRUE))[1]
+        m <- match_taxa(cl$taxon, names(v), synonyms = synonyms)
+        # "Dominated by Bacteroides" where the data splits Bacteroides across
+        # several features is a claim about the genus, not about one feature.
+        gk <- harmonize_taxon(sub("\\s.*$", "", names(v)), synonyms)
+        claim_gk <- harmonize_taxon(sub("\\s.*$", "", cl$taxon), synonyms)
+        by_genus <- tapply(v, gk, sum)
+        top_genus <- names(sort(by_genus, decreasing = TRUE))[1]
+        status <- if (identical(top_genus, claim_gk)) "held" else "failed"
+        observed <- sprintf("%s (%.1f%%)", top_genus, 100 * max(by_genus))
+        detail <- sprintf("paper: %s dominates in %s; reanalysis top genus: %s",
+                          cl$taxon, cl$group, observed)
+      }
+
+    } else if (identical(cl$type, "alpha")) {
+      gt <- evidence$alpha
+      if (is.null(gt)) { detail <- "no alpha group test supplied" }
+      else {
+        sig <- isTRUE(gt$significant %||% (!is.na(gt$p) && gt$p < 0.05))
+        obs_dir <- if (!sig) "none" else gt$direction %||% NA_character_
+        observed <- obs_dir %||% NA_character_
+        status <- if (identical(obs_dir, cl$direction)) "held" else "failed"
+        detail <- sprintf("paper: %s; reanalysis: %s", cl$direction, observed)
+      }
+
+    } else if (identical(cl$type, "beta")) {
+      bt <- evidence$beta
+      if (is.null(bt)) { detail <- "no beta test supplied" }
+      else {
+        sig <- isTRUE(bt$significant %||% (!is.na(bt$p) && bt$p < 0.05))
+        status <- if (identical(sig, isTRUE(cl$differs))) "held" else "failed"
+        observed <- if (sig) "differs" else "does not differ"
+        # A PERMANOVA unqualified by dispersion does not license a location claim,
+        # so a "held" that rests on one is downgraded rather than reported clean.
+        if (isTRUE(bt$dispersion_heterogeneous)) {
+          status <- "unscored"
+          detail <- "dispersion heterogeneous — PERMANOVA does not license a composition claim"
+        } else {
+          detail <- sprintf("paper: %s; reanalysis: %s",
+                            if (isTRUE(cl$differs)) "differs" else "does not differ", observed)
+        }
+      }
+    }
+
+    data.frame(id = cl$id, type = cl$type, contrast = cl$contrast %||% NA_character_,
+               status = status, observed = observed, detail = detail,
+               stringsAsFactors = FALSE)
+  })
+
+  out <- do.call(rbind, rows)
+  mfg_log("benchmark", "claims_scored", list(
+    n = nrow(out), held = sum(out$status == "held"),
+    failed = sum(out$status == "failed"),
+    unadjudicated = sum(out$status %in% c("unscored", "not_evaluable"))))
+  class(out) <- c("mfg_scored_claims", "data.frame")
+  out
+}
+
+#' @export
+print.mfg_scored_claims <- function(x, ...) {
+  cat("=== Claim scoring ===\n")
+  for (i in seq_len(nrow(x))) {
+    mark <- switch(x$status[i], held = "+", failed = "-", "?")
+    cat(sprintf("  %s [%-13s] %-22s %s\n", mark, x$status[i], x$id[i], x$detail[i]))
+  }
+  n_un <- sum(x$status %in% c("unscored", "not_evaluable"))
+  if (n_un) {
+    cat(sprintf("\n  %d claim(s) unadjudicated. These block a clean 'reproduced'\n", n_un))
+    cat("  verdict — encode them, supply the evidence, or record an explicit\n")
+    cat("  adjudication. A claim that cannot be scored must not vanish.\n")
+  }
+  invisible(x)
+}
+
 #' Combine the domain concordances into one verdict, without averaging them.
 #'
 #' The verdict is categorical, not a score, and it is driven by conclusion flips
@@ -492,9 +672,22 @@ print.mfg_concordance_profile <- function(x, ...) {
 #' partially_reproduced some claims held, others did not
 #' diverged            the central claims did not hold
 concordance_verdict <- function(alpha = NULL, beta = NULL, da = NULL,
-                                profile = NULL,
+                                profile = NULL, claims = NULL,
                                 da_recovery_threshold = 0.7) {
   flips <- character(); held <- character(); notes <- character()
+  unadjudicated <- character()
+
+  # The paper's own stated claims come first: taxon-recovery agreement is a proxy
+  # for them, and where the two disagree the claim is what the benchmark is for.
+  if (!is.null(claims) && nrow(claims)) {
+    for (i in seq_len(nrow(claims))) {
+      lab <- sprintf("claim '%s': %s", claims$id[i], claims$detail[i])
+      switch(claims$status[i],
+        held   = { held  <- c(held, lab) },
+        failed = { flips <- c(flips, lab) },
+        { unadjudicated <- c(unadjudicated, lab) })
+    }
+  }
 
   if (!is.null(alpha)) {
     for (a in if (inherits(alpha, "mfg_concordance_alpha")) list(alpha) else alpha) {
@@ -546,14 +739,20 @@ concordance_verdict <- function(alpha = NULL, beta = NULL, da = NULL,
       "upstream, not to the statistics."), profile$mean_bray))
   }
 
-  verdict <- if (!length(flips)) "reproduced"
-             else if (length(held)) "partially_reproduced"
-             else "diverged"
+  # An unadjudicated claim cannot produce a clean "reproduced". Anything else
+  # lets a claim the benchmark never tested read afterwards as one that held.
+  verdict <- if (length(flips) && length(held)) "partially_reproduced"
+             else if (length(flips)) "diverged"
+             else if (length(unadjudicated)) "incomplete"
+             else "reproduced"
 
   out <- list(verdict = verdict, flips = flips, held = held, notes = notes,
-              n_flips = length(flips), n_held = length(held))
+              unadjudicated = unadjudicated,
+              n_flips = length(flips), n_held = length(held),
+              n_unadjudicated = length(unadjudicated))
   mfg_log("benchmark", "verdict", list(
     verdict = verdict, n_flips = length(flips), n_held = length(held),
+    n_unadjudicated = length(unadjudicated),
     flips = paste(flips, collapse = " | ")))
   class(out) <- c("mfg_verdict", "list")
   out
@@ -569,6 +768,10 @@ print.mfg_verdict <- function(x, ...) {
   if (length(x$flips)) {
     cat("\nClaims that did not hold:\n")
     for (f in x$flips) cat("  - ", f, "\n", sep = "")
+  }
+  if (length(x$unadjudicated)) {
+    cat("\nClaims NOT adjudicated (the verdict is incomplete until these are):\n")
+    for (u in x$unadjudicated) cat("  ? ", u, "\n", sep = "")
   }
   if (length(x$notes)) {
     cat("\nQualifications:\n")

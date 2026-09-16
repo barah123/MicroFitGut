@@ -178,11 +178,21 @@ match_taxa <- function(published, reanalysis,
   # reanalysis resolves only to genus, or the reverse. This is a real match at a
   # shallower rank, not a failure, but it is a weaker claim.
   matched_pub <- vapply(matches, function(m) m$published, character(1))
+  # Truncate FIRST, then harmonise the genus token — not the reverse. A synonym
+  # that rewrites a bare genus into a compound form (Escherichia ->
+  # Escherichia-Shigella) does not fire on a multi-word name that contains that
+  # genus, so harmonising before truncating leaves the two sides in different
+  # namespaces and misses a real match. That silently deflates recovery rate,
+  # which is worse than not harmonising at all.
+  genus_key <- function(x) harmonize_taxon(sub("\\s.*$", "", x), synonyms)
+  pub_genus_all <- genus_key(pub_df$published)
+  rea_genus_all <- genus_key(rea_df$reanalysis)
   for (i in seq_len(nrow(pub_df))) {
     if (pub_df$published[i] %in% matched_pub || is.na(pub_df$published_h[i])) next
-    pub_genus <- sub("\\s.*$", "", pub_df$published_h[i])
-    j <- which(sub("\\s.*$", "", rea_df$reanalysis_h) == pub_genus &
-               !rea_df$reanalysis %in% used_rea & !is.na(rea_df$reanalysis_h))
+    pub_genus <- pub_genus_all[i]
+    if (is.na(pub_genus)) next
+    j <- which(rea_genus_all == pub_genus &
+               !rea_df$reanalysis %in% used_rea & !is.na(rea_genus_all))
     if (length(j)) {
       matches[[length(matches) + 1]] <- data.frame(
         published = pub_df$published[i], reanalysis = rea_df$reanalysis[j[1]],

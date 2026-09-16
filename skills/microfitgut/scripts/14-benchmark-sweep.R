@@ -101,6 +101,61 @@ study_field <- function(value = NULL, confidence = c("stated", "inferred", "abse
   list(value = value, confidence = confidence, evidence = evidence, location = location)
 }
 
+#' A single machine-checkable claim from the paper.
+#'
+#' `reported_claims` as free prose cannot drive a verdict: scoring it would mean
+#' a model reading a sentence and deciding whether it held, which puts an
+#' unreproducible judgement on the critical path of the primary endpoint. A claim
+#' has to arrive already in a form a function can evaluate.
+#'
+#' `contrast` is load-bearing and not optional. A paper states several claims
+#' about different comparisons, and scoring a claim against the wrong one
+#' produces a confident wrong answer with no symptom — the arithmetic succeeds.
+#' Scoring refuses unless the claim's contrast matches the analysis it is given.
+#'
+#' type            required fields
+#' --------------  ----------------------------------------------------------
+#' da_count        n, comparator ("eq","lte","gte","approx"); tolerance for approx
+#' da_direction    taxon, higher_in
+#' dominance       taxon, group
+#' alpha           direction ("higher","lower","none"), groups
+#' beta            differs (TRUE/FALSE)
+#' unscored        text — explicitly not machine-checkable
+#'
+#' `unscored` is the escape valve, and it is the honest answer for a qualitative
+#' claim. What it must never do is disappear: an unscored claim blocks a clean
+#' "reproduced" verdict rather than being silently dropped.
+study_claim <- function(id, type = c("da_count", "da_direction", "dominance",
+                                     "alpha", "beta", "unscored"),
+                        contrast = NULL, evidence = NULL, location = NULL, ...) {
+  type <- match.arg(type)
+  spec <- list(...)
+  required <- switch(type,
+    da_count     = c("n", "comparator"),
+    da_direction = c("taxon", "higher_in"),
+    dominance    = c("taxon", "group"),
+    alpha        = c("direction"),
+    beta         = c("differs"),
+    unscored     = c("text"))
+  missing <- setdiff(required, names(spec))
+  if (length(missing)) {
+    stop(sprintf("study_claim('%s', type = '%s') needs: %s", id, type,
+                 paste(missing, collapse = ", ")), call. = FALSE)
+  }
+  if (!identical(type, "unscored") && is.null(contrast)) {
+    stop(sprintf(paste("study_claim('%s') needs a contrast. A claim scored",
+      "against the wrong comparison fails silently."), id), call. = FALSE)
+  }
+  if (is.null(evidence)) {
+    warning(sprintf("Claim '%s' has no evidence span and cannot be checked.", id),
+            call. = FALSE)
+  }
+  out <- c(list(id = id, type = type, contrast = contrast,
+                evidence = evidence, location = location), spec)
+  class(out) <- c("mfg_study_claim", "list")
+  out
+}
+
 #' Build and validate a study card.
 study_card <- function(..., study_id = NULL) {
   fields <- list(...)
@@ -200,6 +255,7 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
   # Candidate levels per axis, ordered so the first entry is the most informative
   # contrast against the baseline.
   levels_by_axis <- list()
+  unrunnable <- list()
   for (ax in axes) {
     opts <- MFG_STUDY_CARD_FIELDS[[ax]]$options
     # Rarefaction depth options come from this dataset's depth distribution, not
@@ -208,9 +264,51 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
       d <- phyloseq::sample_sums(ps)
       opts <- unique(round(c(min(d), stats::quantile(d, c(0.10, 0.25), names = FALSE))))
     }
+    # A level this dataset cannot run is not a level. UniFrac against an object
+    # with no tree, or a rank the taxonomy table does not carry, puts runs in the
+    # grid that can only fail — and worse, inflates the denominator of any "share
+    # of configurations in which the claim held" statistic computed from it.
+    # Unrunnable is a different category from untested and is reported separately.
+    if (!is.null(opts) && !is.null(ps)) {
+      runnable <- switch(ax,
+        beta_distance   = allowed_beta_distances(mfg_tree_is_real(ps)),
+        taxonomic_level = c("ASV", phyloseq::rank_names(ps)),
+        NULL)
+      if (!is.null(runnable)) {
+        blocked <- setdiff(as.character(opts), as.character(runnable))
+        if (length(blocked)) unrunnable[[ax]] <- blocked
+        opts <- opts[as.character(opts) %in% as.character(runnable)]
+      }
+    }
     if (is.null(opts)) next
     opts <- setdiff(opts, baseline[[ax]])
     if (length(opts)) levels_by_axis[[ax]] <- opts
+  }
+  if (length(unrunnable)) {
+    warning(sprintf(paste("These axis levels cannot run on this dataset and were",
+      "removed from the grid. Report them as unrunnable, not untested: %s"),
+      paste(sprintf("%s (%s)", names(unrunnable),
+                    vapply(unrunnable, paste, character(1), collapse = "/")),
+            collapse = "; ")), call. = FALSE)
+  }
+  # The baseline itself is a run. If the paper's own stated configuration cannot
+  # execute on this object, every concordance figure below is against nothing.
+  if (!is.null(ps)) {
+    bl_blocked <- character(0)
+    if (!is.null(baseline$beta_distance) &&
+        !baseline$beta_distance %in% allowed_beta_distances(mfg_tree_is_real(ps))) {
+      bl_blocked <- c(bl_blocked, paste0("beta_distance=", baseline$beta_distance))
+    }
+    if (!is.null(baseline$taxonomic_level) &&
+        !baseline$taxonomic_level %in% c("ASV", phyloseq::rank_names(ps))) {
+      bl_blocked <- c(bl_blocked, paste0("taxonomic_level=", baseline$taxonomic_level))
+    }
+    if (length(bl_blocked)) {
+      warning(sprintf(paste("The BASELINE cannot run on this object (%s). The",
+        "baseline is the reconstruction of the paper, so no concordance can be",
+        "computed until this is resolved."),
+        paste(bl_blocked, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # Round-robin: one level from each axis per pass. Truncation then thins every
@@ -269,6 +367,10 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
   mfg_log("benchmark", "sweep_grid_built", list(
     n_runs = nrow(grid), axes = paste(axes, collapse = ","),
     n_axes = length(axes), truncated = truncated,
+    unrunnable = if (length(unrunnable))
+      paste(sprintf("%s=%s", names(unrunnable),
+                    vapply(unrunnable, paste, character(1), collapse = "/")),
+            collapse = " ") else "none",
     baseline = paste(sprintf("%s=%s", names(baseline),
                              vapply(baseline, function(v)
                                paste(format(unlist(v)), collapse = "/"), character(1))),
@@ -276,6 +378,7 @@ build_sweep_grid <- function(card, ps = NULL, axes = NULL, max_runs = 20) {
 
   out <- list(grid = grid, params = params, baseline = baseline, axes = axes,
               n_truncated = truncated, untested = untested,
+              unrunnable = unrunnable,
               axes_dropped = axes_dropped, n_total_levels = n_total_levels)
   class(out) <- c("mfg_sweep_grid", "list")
   out
@@ -298,6 +401,14 @@ print.mfg_sweep_grid <- function(x, ...) {
       cat(sprintf("    %-20s %s\n", ax, paste(x$untested[[ax]], collapse = ", ")))
     }
     cat("  List these in the benchmark report — an untested axis cannot be ruled out.\n")
+  }
+  if (length(x$unrunnable)) {
+    cat("\n! UNRUNNABLE on this dataset (removed from the grid, not a run cap):\n")
+    for (ax in names(x$unrunnable)) {
+      cat(sprintf("    %-20s %s\n", ax, paste(x$unrunnable[[ax]], collapse = ", ")))
+    }
+    cat("  Report these separately from untested levels. They were never candidates,\n")
+    cat("  so they do not belong in the denominator of a fragility statistic.\n")
   }
   if (length(x$axes_dropped)) {
     cat(sprintf("\n!! %s got no run at all and cannot be attributed.\n",

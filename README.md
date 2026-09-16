@@ -420,7 +420,7 @@ laptop and Snakemake or Nextflow would be pure overhead.
 Every release is archived on Zenodo with its own DOI.
 
 > Appiah, P. (2026). *MicroFitGut: a downstream microbiome analysis agent for
-> Claude Code* (Version 1.0.0) [Computer software]. Zenodo.
+> Claude Code* (Version 1.1.0) [Computer software]. Zenodo.
 > https://doi.org/10.5281/zenodo.22731452
 
 **Cite the concept DOI — [`10.5281/zenodo.22731452`](https://doi.org/10.5281/zenodo.22731452) —** which always
@@ -436,7 +436,7 @@ version you ran.
   author    = {Appiah, Philip},
   title     = {MicroFitGut: a downstream microbiome analysis agent for Claude Code},
   year      = {2026},
-  version   = {1.0.0},
+  version   = {1.1.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.22731452},
   url       = {https://doi.org/10.5281/zenodo.22731452}
