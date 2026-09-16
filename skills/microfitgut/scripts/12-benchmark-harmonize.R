@@ -107,6 +107,13 @@ harmonize_taxon <- function(x, synonyms = MFG_TAXON_SYNONYMS,
   x <- sub("^[dkpcofgst]__", "", trimws(x))
   x <- gsub("[\\[\\]]", "", x, perl = TRUE)
   x <- gsub("_", " ", x)
+  # Compound genus labels are written with either separator depending on the
+  # database and the copy-editor: SILVA emits "Escherichia-Shigella", papers
+  # commonly write "Escherichia/Shigella". Treated as different strings they
+  # count as a miss AND a new finding for the same organism, deflating recovery
+  # and inflating the "new in reanalysis" list at the same time.
+  x <- gsub("\\s*/\\s*", "-", x)
+  x <- gsub("\\s*-\\s*", "-", x)
   x <- gsub("\\s+", " ", trimws(x))
   # Trailing qualifiers that are not part of the name.
   x <- sub("\\s+(group|clade|complex|sensu stricto\\s*\\d*)$", "", x,
