@@ -23,12 +23,38 @@
 #' the same content, so the delimiter is detected rather than assumed.
 mfg_read_table <- function(path, row_names = 1) {
   if (!file.exists(path)) stop("File not found: ", path, call. = FALSE)
-  first <- readLines(path, n = 1, warn = FALSE)
-  sep <- if (lengths(regmatches(first, gregexpr("\t", first))) >
-             lengths(regmatches(first, gregexpr(",", first)))) "\t" else ","
-  utils::read.delim(path, sep = sep, row.names = row_names, header = TRUE,
-                    check.names = FALSE, stringsAsFactors = FALSE,
-                    na.strings = c("NA", "", "NaN"))
+  # Detect the delimiter from the HEADER, not from line 1. QIIME and BIOM
+  # exports begin "# Constructed from biom file", a comment containing neither
+  # a tab nor a comma. Reading that line to choose the separator picks comma for
+  # a tab-separated file, and the result is a data frame with ZERO columns and
+  # no error: every downstream step then fails somewhere unrelated.
+  head_lines <- readLines(path, n = 50, warn = FALSE)
+  head_lines <- sub("^\ufeff", "", head_lines)          # strip a UTF-8 BOM
+  cand <- head_lines[nzchar(trimws(head_lines))]
+  # The header is the first non-blank line that is not a pure comment, or the
+  # last comment line when the header itself is commented ("#OTU ID\t...").
+  is_comment <- grepl("^#", cand)
+  hdr <- if (any(!is_comment)) {
+    commented_header <- which(is_comment & grepl("[\t,]", cand))
+    if (length(commented_header)) cand[max(commented_header)] else cand[which(!is_comment)[1]]
+  } else cand[1]
+  ntab <- lengths(regmatches(hdr, gregexpr("\t", hdr)))
+  ncom <- lengths(regmatches(hdr, gregexpr(",",  hdr)))
+  sep <- if (ntab > ncom) "\t" else ","
+  # A commented header must be kept, so only skip comment lines above it.
+  skip <- if (grepl("^#", hdr)) which(cand == hdr)[1] - 1L else 0L
+  df <- utils::read.delim(path, sep = sep, row.names = row_names, header = TRUE,
+                          check.names = FALSE, stringsAsFactors = FALSE,
+                          comment.char = "", skip = skip,
+                          na.strings = c("NA", "", "NaN"))
+  names(df) <- sub("^\ufeff", "", names(df))
+  if (ncol(df) == 0) {
+    stop(sprintf(paste("Read %s and got %d rows but no columns. The delimiter",
+      "was detected as %s from the header line. Check the file's actual",
+      "separator and comment lines."), basename(path), nrow(df),
+      if (identical(sep, "\t")) "tab" else "comma"), call. = FALSE)
+  }
+  df
 }
 
 # ── Orientation ──────────────────────────────────────────────────────────────
