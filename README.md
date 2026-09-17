@@ -11,7 +11,7 @@
   <a href="https://doi.org/10.5281/zenodo.22731452"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22731452.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1D9E75.svg" alt="MIT licence"></a>
   <img src="https://img.shields.io/badge/R-%E2%89%A5%204.4-157F5E.svg" alt="R 4.4 or later">
-  <img src="https://img.shields.io/badge/validation-90%2F106%20checks-157F5E.svg" alt="90 of 106 validation checks match">
+  <img src="https://img.shields.io/badge/validation-28%2F34%20questions%20%7C%2010%20studies-157F5E.svg" alt="28 of 34 course questions agree; 10 published studies benchmarked">
 </p>
 
 <p align="center">
@@ -361,50 +361,84 @@ Both know the log format and where to look.
 
 ## Validation
 
-MicroFitGut was re-run against every numeric answer stated in a graduate
-microbiome course's problem sets and quizzes.
+MicroFitGut is validated against **two separate bodies of evidence**, and they
+are never pooled into one accuracy figure.
 
-**106 checks: 90 match, 8 differ, 1 blocked by a guard, 2 have no input data**, 
-92% agreement, and every difference attributed to a specific, reproducible cause.
+| | Course material | Published papers |
+|---|---|---|
+| Unit | 106 numeric checks | 57 extracted claims |
+| Reference | the course's stated answer, known correct | none; the paper's assertion is what is tested |
+| Question | does the implementation compute the same number? | does the published claim survive reanalysis? |
+| Name | software verification | reproducibility assessment |
 
-Exact agreement, to every digit the course printed: all 45 mixed-model checks
-(F statistics, chi-squares, p-values, AIC, likelihood-ratio tests), the
-zero-inflated model comparison (ZINB 2257.44, ZHNB 2257.33, log-likelihoods
-−63688.7 and −1123.72), the alpha-diversity statistics, and the Bayesian joint
-model's conclusions.
+Averaging a quantity that has a known right answer against one that does not
+would produce a number that means nothing, so no combined rate is reported.
 
-The eight differences resolved to two real problems in the source material:
+![Validation overview](validation/results/figures/F0-validation-stacked.png)
+
+Full analysis, tables and figures: [`validation/results/`](validation/results/).
+
+### 1. Course material regression
+
+Re-run against every numeric answer stated in a graduate microbiome course's
+problem sets and quizzes.
+
+| Level | Result | 95% Clopper-Pearson |
+|---|---|---|
+| **Per exercise question (headline)** | **28/34 = 82.4%** | 65.5 to 93.2 |
+| Per row, attribution rows removed | 84/92 = 91.3% | 83.6 to 96.2 |
+
+The row is the wrong unit. Seven `ps10 repro` rows recompute the same six
+quantities under the course's own choices in order to attribute the discrepancy,
+so counting a discrepancy and its own explanation as separate data points
+inflates the denominator symmetrically. One fitted model also appears twice, as
+`ps12 Q5` and `ps13 Q5`. Rows that are not checks at all are named rather than
+absorbed: 5 carry no expected value, 1 was refused by a guard, 2 had no input
+data on disk.
+
+**The six disagreeing questions collapse to three documented causes**, and every
+problem set other than ps10 and ps7 agrees completely:
 
 1. **A degenerate size-factor estimator.** One dataset has exactly 1 of 51 taxa
    present in every sample, so DESeq2's default derived all 209 size factors from
    that single taxon. MicroFitGut uses the positive-count geometric mean over all
-   taxa; the two size-factor vectors correlate at **−0.10**.
-2. **A variable-shadowing bug** that fed already-normalized counts to DESeq2.
+   taxa; the two size-factor vectors correlate at **-0.10**.
+2. **A variable-shadowing bug** in the course material that fed already-normalized
+   counts to DESeq2.
+3. **An assumption check directing a non-parametric test** where the question
+   instructed ANOVA.
 
-Replicating both choices reproduced the course's numbers exactly, which is what
-turns a discrepancy into an attribution.
+Replicating the course's choices reproduced its numbers exactly, which is what
+turns a discrepancy into an attribution rather than a disagreement.
+
+Exact agreement, to every digit the course printed: all 45 mixed-model checks
+(F statistics, chi-squares, p-values, AIC, likelihood-ratio tests), the
+zero-inflated model comparison (ZINB 2257.44, ZHNB 2257.33, log-likelihoods
+-63688.7 and -1123.72), the alpha-diversity statistics, and the Bayesian joint
+model's conclusions.
 
 The exercise also found and fixed **six bugs in MicroFitGut itself**, including a
 structurally biased rarefaction-plateau criterion, a likelihood-ratio test that
 silently returned NULL, and log events that never reached disk.
 
+### 2. Benchmark against published studies
 
-### Benchmark against published studies
+A **set of ten published studies, five 16S amplicon and five shotgun
+metagenomic**, chosen to exercise every input format and design feature the tool
+claims to handle. This is a purposive coverage matrix, not a sample: it tests the
+software, so **no result here describes a rate at which the literature
+reproduces.**
 
-Beyond the course regression, MicroFitGut is benchmarked against a **set of ten
-published studies, five 16S amplicon, five shotgun metagenomic**: chosen to
-exercise every input format and design feature the tool claims to handle. This is
-a purposive coverage matrix, not a sample: it tests the software, so the results
-must not be read as a rate at which the literature reproduces.
-
-Full reports are in [`validation/`](validation/); the manifest is
+Each report follows the same structure: study card, reconstruction, results,
+verdict, defects, and the code to reproduce it. Full reports are in
+[`validation/`](validation/); the manifest is
 [`validation/validation-set-manifest.csv`](validation/validation-set-manifest.csv)
 (and `.xlsx`).
 
 **Neither the papers nor the datasets are redistributed here.** Every study is
 identified by its DOI or accession so it can be retrieved from source, which keeps
 provenance intact and avoids republishing material under licences that do not
-permit it. Each report carries the code needed to reproduce it.
+permit it.
 
 | # | ID | Tech | Study | Journal, year | Paper DOI | Data repository | Accession | Role in the matrix |
 |---|---|---|---|---|---|---|---|---|
@@ -412,18 +446,71 @@ permit it. Each report carries the code needed to reproduce it.
 | 1 | **S1** | Shotgun | Colorectal Cancer and the Human Gut Microbiome:… | PloS one, 2016 | [10.1371/journal.pone.0155362](https://doi.org/10.1371/journal.pone.0155362) | curatedMetagenomicData | [`VogtmannE_2016`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Basic MetaPhlAn path, end to end |
 | 2 | **S4** | Shotgun | Altered Gut Microbiome Profile in Patients With… | Hypertension, 2020 | [10.1161/hypertensionaha.119.14294](https://doi.org/10.1161/hypertensionaha.119.14294) | Dryad | [`10.5061/dryad.stqjq2c03`](https://doi.org/10.5061/dryad.stqjq2c03) | Second parser: BIOM, plus KEGG-orthology functional BIOM |
 | 3 | **A3** | 16S | The microbiome of the ant‐built home: the micro… | Ecosphere, 2017 | [10.1002/ecs2.1639](https://doi.org/10.1002/ecs2.1639) | Dryad | [`10.5061/dryad.ph2c5`](https://doi.org/10.5061/dryad.ph2c5) | Leanest possible input: one .biom, no metadata file |
-| 4 | **A1** | 16S | Unique bacterial assembly, composition, and int… | Journal of Experimental Bota, 2020 | [10.1093/jxb/erz572](https://doi.org/10.1093/jxb/erz572) | Dryad | [`10.5061/dryad.7wm37pvnk`](https://doi.org/10.5061/dryad.7wm37pvnk) | NEGATIVE CONTROL - no guard should fire |
+| 4 | **A1** | 16S | Unique bacterial assembly, composition, and int… | Journal of Experimental Bota, 2020 | [10.1093/jxb/erz572](https://doi.org/10.1093/jxb/erz572) | Dryad | [`10.5061/dryad.7wm37pvnk`](https://doi.org/10.5061/dryad.7wm37pvnk) | Intended as a negative control; turned out to be paired across sites |
 | 5 | **S3** | Shotgun | The dynamics of the human infant gut microbiome… | Cell host & microbe, 2015 | [10.1016/j.chom.2015.01.001](https://doi.org/10.1016/j.chom.2015.01.001) | curatedMetagenomicData | [`KosticAD_2015`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Repeated-measures guard on shotgun (up to 10/subject) |
 | 6 | **S2** | Shotgun | Gut microbiome development along the colorectal… | Nature communications, 2015 | [10.1038/ncomms7528](https://doi.org/10.1038/ncomms7528) | curatedMetagenomicData | [`FengQ_2015`](https://doi.org/10.18129/B9.bioc.curatedMetagenomicData) | Multi-group: omnibus then post-hoc gating |
-| 7 | **S5** | Shotgun | Integrated Metagenomic and Metabolomic Analysis… | Metabolites, 2024 | [10.3390/metabo14120713](https://doi.org/10.3390/metabo14120713) | Zenodo | [`10.5281/zenodo.13917959`](https://doi.org/10.5281/zenodo.13917959) | HUMAnN functional-profile path |
+| 7 | **S5** | Shotgun | Integrated Metagenomic and Metabolomic Analysis… | Metabolites, 2024 | [10.3390/metabo14120713](https://doi.org/10.3390/metabo14120713) | Zenodo | [`10.5281/zenodo.13917959`](https://doi.org/10.5281/zenodo.13917959) | MetaPhlAn profile parser; HUMAnN functional path |
 | 8 | **A2** | 16S | Comparative analysis of microbiota along the le… | Ecology and Evolution, 2019 | [10.1002/ece3.5789](https://doi.org/10.1002/ece3.5789) | Dryad | [`10.5061/dryad.931zcrjfn`](https://doi.org/10.5061/dryad.931zcrjfn) | Multi-group on a QIIME2/BIOM input |
 | 9 | **A4** | 16S | Gut microbiota from multiple sclerosis patients… | Proceedings of the National , 2017 | [10.1073/pnas.1711233114](https://doi.org/10.1073/pnas.1711233114) | UCSF Dash | [`10.7272/Q6RX997G`](https://doi.org/10.7272/Q6RX997G) | Assembly path: loose table + separate metadata; twin pairs |
 
-Per-study verdicts are reported in each study's file under [`validation/`](validation/). They are deliberately not summarised here: results across the set belong in a single results table with the accompanying statistics, not spread through a corpus description.
+#### Results across the ten
 
-Running these has so far exposed **ten defects in MicroFitGut**, every one biased
-toward reporting non-reproduction, the direction that would have flattered the
-tool. All are fixed, and all were fixed before any corpus study was scored.
+57 claims were extracted. Every claim ends in exactly one status, and only four
+of them enter a denominator.
+
+| | Result | 95% CI |
+|---|---|---|
+| Scorable claims reproduced | 30/40 (75.0%) | 59.8 to 85.8 |
+| Claims adjudicable | 40/57 (70.2%) | 57.3 to 80.5 |
+| Primary claim reproduced (**post hoc**) | 10/10 | 72.2 to 100 |
+
+**The third row must not be quoted as an endpoint result.** No report designated a
+primary claim in advance; they were chosen after the results were visible, which
+is outcome selection, not a test.
+
+The 17 unscorable claims are reported by reason and never pooled: 7
+`schema_gap`, 3 `not_attempted`, 3 `out_of_scope`, 2 `data_absent`, 2
+`contrast_mismatch`. A study whose claims are mostly `data_absent` and one whose
+claims are mostly `not_reproduced` are opposite findings.
+
+**Adjudicability varies far more across studies than anything else measured**,
+from 25% (Kostic) to 100% (Vogtmann, Feng, Pérez-Losada). That is a finding about
+data deposition, not about analytical fragility.
+
+**No claim has a reanalysis p-value between 0.017 and 0.059**, so the 0.05
+threshold adjudicates no close calls in this set, and the scored outcome is
+stable between alpha 0.01 and 0.05.
+
+**There is no statistically significant contradiction of any paper.** Every claim
+scored `not_reproduced` is a failure to detect the asserted effect, not a
+significant effect in the opposite direction.
+
+#### What this set cannot establish
+
+- **Not a failure rate for the literature.** Purposive coverage matrix, no
+  sampling frame.
+- **Not a comparison of 16S against shotgun.** All five shotgun studies came from
+  curated deposits; three of the five 16S studies are non-human. The arms are
+  confounded with deposit curation and with host.
+- **Not a test of guard specificity.** A1 was intended as a clean negative control
+  and turned out to be a paired design across four sites, so **the set has no
+  clean arm.** Without one there is no evidence separating "the guards catch real
+  problems" from "the guards fire on everything".
+- **Almost nothing in the protocol's own frame.** Of the ten, two are
+  human-associated and published 2020 to 2025, and one of those is the tool's own
+  development dataset.
+
+#### Defects
+
+Running these exposed **twenty defects in MicroFitGut**, all fixed, and all fixed
+before any corpus study was scored.
+
+The direction of bias must be recorded per defect rather than asserted in
+aggregate. Most biased toward reporting **non-reproduction**, the direction that
+would have flattered the tool. **At least two did not**: defects #14 and #16 are
+failures to detect a clustering variable, which lets the naive unstratified test
+run and inflates significance, making a claim of difference *more* likely to be
+scored as reproduced. A per-defect register is outstanding work.
 
 ---
 

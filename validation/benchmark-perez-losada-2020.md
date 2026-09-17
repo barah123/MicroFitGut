@@ -7,7 +7,7 @@ paper's stated claims, and reporting which survive.
 
 | | |
 |---|---|
-| **Paper** | Pérez-Losada M, et al. Testing the "Grandma Hypothesis": characterizing skin microbiome diversity as a project-based learning approach to genomics. *J Microbiol Biol Educ.* 2020;21(1):21.1.7. |
+| **Paper** | Pérez-Losada M, et al. Testing the "Grandma Hypothesis": characterizing skin microbiome diversity as a project-based learning approach to genomics. *J Microbiol Biol Educ.* 2020;21(1):21.1.7. [10.1128/jmbe.v21i1.2010](https://doi.org/10.1128/jmbe.v21i1.2010) |
 | **Raw data** | NCBI SRA BioProject [PRJNA553551](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) |
 | **Analyzed** | `dataset/ps.RDS`, the processed feature table, 619 taxa × 344 samples, 128 participants, with phylogeny |
 | **Hypothesis** | Body regions washed less often ("grandma hotspots": behind the ears, between the toes, navel) host different microbial communities from regions washed more often (forearms, calves) |
@@ -135,17 +135,41 @@ predicts that the independence-assuming analysis reports more. Both fit.
 ```
 === Benchmark verdict: PARTIALLY REPRODUCED ===
 
-Claims that held:
-  + alpha-higher-in-washed : paper: higher; reanalysis: higher
+Reproduced (2):
+  + alpha-higher-in-washed : +1.62 Shannon, p < 1e-16, LMM with (1 | patient)
   + ten-genera             : paper approx 10, reanalysis 11 (tolerance 3)
 
-Claims that did not hold:
-  - DA: only 30% of published taxa recovered (3 of 10)
+Not reproduced (0)
 
-Claims NOT adjudicated:
-  ? beta-differs : dispersion heterogeneous: PERMANOVA does not license
-                   a composition claim
+Not licensed (1):
+  ! beta-differs           : significant at p = 0.001, but betadisper
+                             p = 0.001, so PERMANOVA does not license a
+                             composition claim
+
+Outside the denominator (0)
+
+Scorable: 3 of 3.  Reproduced: 2 of 3.
 ```
+
+**This verdict block was rewritten when the scoring scheme was revised.** Two
+changes:
+
+1. **The DA recovery item is no longer a claim.** It previously appeared as the
+   study's only failure, reading "only 30% of published taxa recovered". That is
+   a concordance measure against a hard-coded threshold of 0.7, not something the
+   paper asserted, and under the current scheme a concordance measure cannot
+   decide an outcome. The finding itself is unchanged and is reported in section
+   3 and in the sweep, where it belongs.
+2. **`beta-differs` moved from unadjudicated to `not_licensed`.** It had been
+   pooled with claims that could not be tested at all. The test ran and returned
+   a result; what is missing is the licence to read that result as a composition
+   claim. That is a finding about the paper, and it now sits inside the
+   denominator rather than beside it.
+
+The `ten-genera` verdict rests on a **tolerance of 3 against a claim of 10**, a
+window of 7 to 13, which was an analyst choice and is recorded here because it
+decides the outcome. The sweep in section 4b shows the same claim holding in only
+3 of 16 configurations.
 
 ### What this means
 

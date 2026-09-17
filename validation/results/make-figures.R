@@ -67,7 +67,11 @@ f3d <- cl %>% filter(!is.na(p_value), new_status %in% c("reproduced","not_reprod
                         levels = c("difference", "null"),
                         labels = c("Paper asserted a difference\n(shaded = claim not supported)",
                                    "Paper asserted no difference\n(shaded = claim supported)")))
-f3 <- ggplot(f3d, aes(p, reorder(paste0(study_id, ":", claim_id), -p))) +
+# Patchwork aligns axes across a stacked composite, so the widest label here
+# sets the left edge of EVERY panel. Long claim ids cost the whole figure.
+f3d$lab <- ifelse(nchar(f3d$claim_id) > 22,
+                  paste0(substr(f3d$claim_id, 1, 21), "\u2026"), f3d$claim_id)
+f3 <- ggplot(f3d, aes(p, reorder(paste0(study_id, ":", lab), -p))) +
   annotate("rect", xmin = 0.05, xmax = 2, ymin = -Inf, ymax = Inf,
            fill = "grey50", alpha = 0.10) +
   geom_vline(xintercept = 0.05, linetype = "22", color = "grey35") +
@@ -103,34 +107,74 @@ f4 <- cw %>% mutate(status = factor(status, levels = names(CCOL))) %>%
   theme_canis(11) + theme(legend.position = "bottom")
 sv(f4, "F4-coursework-agreement", 7.5, 4.2)
 
-## F5. The two bodies side by side, WITHOUT pooling them.
+## F5. The headline rates, side by side, WITHOUT pooling them.
+# Body A is shown at both units because the row level is not the honest one:
+# seven ps10 rows are the attribution for the six ps10 discrepancies, not
+# independent successes, and one fitted model appears twice.
 f5d <- data.frame(
-  body = factor(c("Course material\n(verification)", "Course material\n(verification)",
-                  "Published papers\n(reproducibility)", "Published papers\n(reproducibility)"),
-                levels = c("Course material\n(verification)", "Published papers\n(reproducibility)")),
-  what = c("agreement with\nstated answer", "effective independent\ndiscrepancies",
-           "primary claim\nreproduced", "scorable claims\nreproduced"),
-  x = c(90, 3, 10, 30), n = c(98, 3, 10, 40))
-f5d$p <- f5d$x/f5d$n
-wil <- function(x,n){z<-qnorm(.975);ph<-x/n;d<-1+z^2/n
-  c(max(0,(ph+z^2/(2*n)-z*sqrt((ph*(1-ph)+z^2/(4*n))/n))/d),
-    min(1,(ph+z^2/(2*n)+z*sqrt((ph*(1-ph)+z^2/(4*n))/n))/d))}
-f5d[c("lo","hi")] <- t(mapply(wil, f5d$x, f5d$n))
-f5d <- f5d[f5d$what != "effective independent\ndiscrepancies", ]
+  body = factor(c(rep("Course material\n(verification)", 2),
+                  rep("Published papers\n(reproducibility)", 2)),
+                levels = c("Course material\n(verification)",
+                           "Published papers\n(reproducibility)")),
+  what = c("per exercise\nquestion", "per row\n(not independent)",
+           "primary claim\n(POST HOC)", "scorable claims\nreproduced"),
+  x = c(28, 84, 10, 30), n = c(34, 92, 10, 40),
+  stringsAsFactors = FALSE)
+f5d$what <- factor(f5d$what, levels = f5d$what)
+f5d$p <- f5d$x / f5d$n
+# Clopper-Pearson: conservative, which is the right direction when the person
+# reporting the validation also wrote the tool.
+cp <- function(x, n) stats::binom.test(x, n)$conf.int[1:2]
+f5d[c("lo","hi")] <- t(mapply(cp, f5d$x, f5d$n))
 f5 <- ggplot(f5d, aes(what, p, color = body)) +
   geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.12, linewidth = 0.7) +
   geom_point(size = 4) +
-  geom_text(aes(label = sprintf("%d/%d", x, n)), nudge_x = 0.17, hjust = 0,
-            size = 3.4, show.legend = FALSE) +
-  scale_x_discrete(expand = expansion(add = c(0.6, 0.9))) +
+  geom_text(aes(label = sprintf("%d/%d", x, n)), nudge_x = 0.16, hjust = 0,
+            size = 3.3, show.legend = FALSE) +
+  scale_x_discrete(expand = expansion(add = c(0.6, 0.95))) +
   facet_grid(~ body, scales = "free_x", space = "free_x") +
   scale_y_continuous(labels = scales::percent, limits = c(0.4, 1.06)) +
   scale_color_manual(values = c("#0072B2", "#CC79A7"), guide = "none") +
   labs(title = "Two bodies of evidence, reported separately",
-       subtitle = "95% Wilson intervals. These measure different things and are never pooled into one accuracy.",
+       subtitle = paste("95% Clopper-Pearson intervals. These measure different",
+                        "things and are never\npooled into one accuracy figure."),
        x = NULL, y = NULL) +
   theme_canis(11)
-sv(f5, "F5-two-bodies", 7.8, 4.6)
+sv(f5, "F5-two-bodies", 8.0, 4.8)
 
-cat("figures written:", length(list.files(OUT, "[.]png$")), "\n")
-print(list.files(OUT))
+## F0. The stacked composite for the README: all five panels in one column.
+# Stacking rather than gridding keeps every panel full width, which matters
+# because F1 and F3 carry long study and claim labels that a two-column grid
+# would compress to illegibility.
+if (requireNamespace("patchwork", quietly = TRUE)) {
+  library(patchwork)
+  # NOTE on operator precedence: `+` binds tighter than `&`, so writing
+  #   x + plot_layout() & theme() + plot_annotation()
+  # parses as (x + plot_layout()) & (theme() + plot_annotation()), which adds
+  # the annotation to the THEME and silently drops the composite title. Build
+  # it in separate statements instead.
+  comp <- (f5 + labs(tag = "A")) /
+          (f4 + labs(tag = "B")) /
+          (f1 + labs(tag = "C")) /
+          (f2 + labs(tag = "D")) /
+          (f3 + labs(tag = "E"))
+  comp <- comp + plot_layout(heights = c(1.0, 0.9, 1.15, 1.1, 1.9))
+  # plot.tag.location defaults to "margin", which reserves a gutter outside the
+  # plot for the tag. "plot" draws it over the plot area instead.
+  comp <- comp & theme(plot.tag = element_text(face = "bold", size = 15),
+                       plot.tag.location = "plot",
+                       plot.tag.position = c(0.002, 0.985))
+  comp <- comp + plot_annotation(
+    title = "MicroFitGut validation: two bodies of evidence",
+    subtitle = paste("A-B: 106 checks against the course material's stated answers.",
+                     "C-E: 57 claims from ten published papers.",
+                     "\nThe two are never pooled into one accuracy figure."),
+    theme = theme_canis(13) +
+      theme(plot.title = element_text(face = "bold", size = 17),
+            plot.subtitle = element_text(size = 11, lineheight = 1.2)))
+  ggsave(file.path(OUT, "F0-validation-stacked.png"), comp,
+         width = 9.5, height = 30, dpi = 200, bg = "white", limitsize = FALSE)
+  cat("stacked composite written\n")
+} else {
+  cat("patchwork not installed; stacked composite skipped\n")
+}
