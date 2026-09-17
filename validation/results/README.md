@@ -25,24 +25,45 @@ correctly at the boundary where the Wald interval collapses to zero width.
 
 ### Body A: course material
 
-**90 of 98 scored checks agree (91.8%, 95% CI 84.7 to 95.8).**
+Two denominators, because the 106 rows are not 106 independent checks.
 
-The denominator excludes 8 of the 106 rows, each named rather than absorbed: 5
-carry no expected value to agree with, 1 was refused by a guard, and 2 had no
-input data on disk.
-
-The eight disagreements are **not eight independent events**. They trace to three
-documented causes, six of them to the same two decisions inside one problem set:
-
-| Cause | Checks | Set |
+| Level | Result | 95% Clopper-Pearson |
 |---|---|---|
-| DESeq2 size factors: only 1 of 51 taxa is present in every sample | 3 | ps10 |
-| ps10 Q2 passes an object that Q1 had overwritten with normalized counts | 3 | ps10 |
-| Assumption check directs non-parametric; the question instructed ANOVA | 2 | ps7 |
+| Per exercise question (headline) | **28/34 = 82.4%** | 65.5 to 93.2 |
+| Per row, attribution rows removed | 84/92 = 91.3% | 83.6 to 96.2 |
 
-Six of the eight sit in ps10 and two in ps7. Every other problem set agrees
-completely. The interval above treats the 106 checks as independent, which they
-are not, so it is narrower than the evidence supports. Treat it as descriptive.
+The row-level figure previously reported here was 90/98. That was too generous
+for two reasons found in audit:
+
+1. **Seven `ps10 repro` rows are the attribution, not independent successes.**
+   They recompute the same six quantities under the course's own two choices, in
+   order to demonstrate that those choices explain the discrepancy. Counting the
+   discrepancy six times and its explanation seven more times inflates the
+   denominator by thirteen for one resolved event, and it inflates it
+   symmetrically, so the ratio looks stable while the sample size is fiction.
+2. **One check appears twice.** `ps12 Q5` and `ps13 Q5` both report an AIC of
+   117.9 against 117.913. Same fitted model, counted in two problem sets.
+
+The denominator excludes rows that are not checks at all, each named rather than
+absorbed: 5 carry no expected value, 1 was refused by a guard, 2 had no input
+data on disk.
+
+The six disagreeing questions collapse further, to **three documented causes**:
+
+| Cause | Questions | Set |
+|---|---|---|
+| DESeq2 size factors: only 1 of 51 taxa is present in every sample | Q2, Q3a, Q3b, Q3c | ps10 |
+| ps10 Q2 passes an object that Q1 had overwritten with normalized counts | same four | ps10 |
+| Assumption check directs non-parametric; the question instructed ANOVA | Q6, Q8+ | ps7 |
+
+Every problem set other than ps10 and ps7 agrees completely.
+
+**One more caveat on what "agrees" means.** MATCH was applied under two different
+criteria without a stated rule. Most rows agree to the precision the answer key
+printed. Two do not: `quiz13 Q1` compares intervals whose lower bounds differ by
+8.7%, and `quiz13 Q4` compares 0.74 against 0.81. Both were scored MATCH on the
+conclusion, which is the right call for Monte Carlo quantities, but it is a
+different criterion and should be declared before scoring rather than after.
 
 ### Body B: ten published papers
 
@@ -51,6 +72,19 @@ are not, so it is narrower than the evidence supports. Treat it as descriptive.
 | Primary claim reproduced | 10/10 (100%) | 72.2 to 100 |
 | Scorable claims reproduced | 30/40 (75.0%) | 59.8 to 85.8 |
 | Claims adjudicable | 40/57 (70.2%) | 57.3 to 80.5 |
+
+**The first row is post hoc and must not be quoted as a primary endpoint
+result.** No report designated a `primary_claim_id`. The headline claim for each
+study was chosen during this analysis, with every result already visible. Under
+the protocol's own rule the endpoint is fixed before the reanalysis runs, so
+10/10 is a description of a selection made after the fact, not a test. It is
+shown because removing it silently would be worse, and it is labeled so it cannot
+be carried into the protocol as evidence.
+
+**The denominator is also unsettled.** These counts come from the report prose.
+The run logs record 53 claims scored, not 57; the four extra are A2 and A4 claims
+adjudicated in the text without passing through `score_claims()`. The `scored`
+column of `claims-rescored.csv` marks which is which.
 
 The 17 unscorable claims are reported by reason and never pooled: 7
 `schema_gap`, 3 `not_attempted`, 3 `out_of_scope`, 2 `data_absent`, 2
@@ -131,13 +165,29 @@ it. Plotting both against one shaded region would misread half the data.
    *Eubacterium* at p = 0.662) point the other way but are nowhere near
    significance.
 3. **Not a comparison of 16S against shotgun.** Fisher's exact test on scorable
-   claims gives p = 0.72. With five studies per arm and claims clustered inside
-   studies, the test has almost no power and is reported only to show that
-   nothing in this set suggests a difference.
-4. **Not traceable to run artifacts.** No `run_log.csv` or `tables/*.csv`
-   survives from the ten studies, so the values in `claims-rescored.csv` were
-   read from the written reports rather than from the runs. This violates the
-   project's first standing rule and must be fixed before the main study.
+   claims gives p = 0.72, but the deeper problem is confounding, not power. All
+   five shotgun studies came from curated or pre-processed deposits, four of them
+   through curatedMetagenomicData. The 16S arm is raw repository deposits, three
+   of which were missing metadata, taxonomy, or a needed covariate. Any apparent
+   gap between the arms is a difference in what was deposited, not in sequencing
+   technology. Three of the five 16S studies are also non-human: ants, squirrels,
+   and a parasitic plant. Report the 5 and 5 split as coverage. Never as a
+   contrast.
+4. **Almost none of these studies is in the protocol's own frame.** The frame is
+   human-associated studies published 2020 to 2025 (protocol section 6). Of the
+   ten, **two** qualify: A0 Pérez-Losada 2020 and S4 Kim 2020. And A0 is
+   `dataset/ps.RDS`, the tool's own development and test dataset, so it is not
+   independent. The pilot therefore contains **one** independent study from
+   anything resembling the target population. This does not weaken the coverage
+   finding, which was the point of the matrix, but it rules the set out as a
+   basis for estimating anything about the frame.
+5. **Only partly traceable to run artifacts.** An earlier version of this file
+   said none survived. That was wrong. 39 run directories carry a `run_log.csv`,
+   293 logged rows in total, so a logged value can be traced to its run. What is
+   missing is `tables/` and `figures/`, of which **none** were written, and the
+   encoded claim objects. The values in `claims-rescored.csv` were read from the
+   reports, and all 37 p-values were verified to appear verbatim in their source
+   report. That confirms the transcription, not the computation.
 
 ## Files
 

@@ -1,5 +1,5 @@
 "body","quantity","x","n","pct","ci_95_wilson"
-"A: course material (verification)","agreement with stated answer",90,98,91.8,"84.7-95.8"
+"A: course material (verification)","agreement with stated answer",84,92,91.3,"83.8-95.5"
 "A: course material (verification)","checks excluded as INFO",5,NA,NA,NA
 "A: course material (verification)","checks blocked by a guard",1,NA,NA,NA
 "A: course material (verification)","checks with no input data",2,NA,NA,NA

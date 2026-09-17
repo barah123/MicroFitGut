@@ -26,6 +26,13 @@ fmt_ci <- function(x, n) {
   sprintf("%d/%d = %.1f%% (95%% Wilson %.1f-%.1f%%)",
           x, n, 100*x/n, 100*ci[1], 100*ci[2])
 }
+# Clopper-Pearson: conservative, and the right default when the person reporting
+# the validation also wrote the tool.
+fmt_cp <- function(x, n) {
+  b <- stats::binom.test(x, n)$conf.int
+  sprintf("%d/%d = %.1f%% (95%% Clopper-Pearson %.1f-%.1f%%)",
+          x, n, 100*x/n, 100*b[1], 100*b[2])
+}
 
 # ---------------------------------------------------------------- Body A
 cw <- read.csv(file.path(ROOT,
@@ -37,20 +44,29 @@ cat("=============== BODY A: course material regression ===============\n")
 cat("Rows:", nrow(cw), "\n")
 print(table(cw$status))
 
-# Denominator. INFO rows carry no expected value to agree with, so they are not
-# checks. BLOCKED and NODATA are outcomes of the run, not of the computation,
-# and each is reported by name rather than folded in.
-scored_A <- subset(cw, status %in% c("MATCH", "DIFFER"))
-cat("\nAgreement on scored checks:", fmt_ci(sum(scored_A$status == "MATCH"), nrow(scored_A)), "\n")
+# Denominator. Three kinds of row are not checks and are named, not absorbed:
+# INFO has no expected value, BLOCKED is a designed refusal, NODATA is a missing
+# input file. A fourth kind IS a check but is not independent: the "ps10 repro"
+# rows recompute the same six quantities under the course's own choices in order
+# to attribute the discrepancy. Counting a discrepancy and its own explanation
+# as separate data points inflates n symmetrically, so the ratio holds steady
+# while the sample size becomes fiction.
+attribution <- grepl("^ps10 repro", cw$source)
+cat("\nrows that are attribution, not independent checks:", sum(attribution), "\n")
+scored_A <- subset(cw, status %in% c("MATCH", "DIFFER") & !attribution)
+cat("Row level:", fmt_cp(sum(scored_A$status == "MATCH"), nrow(scored_A)), "\n")
 cat("  excluded and named separately: INFO", sum(cw$status == "INFO"),
     "| BLOCKED", sum(cw$status == "BLOCKED"), "| NODATA", sum(cw$status == "NODATA"), "\n")
 
-cat("\nBy problem set:\n")
-tabA <- as.data.frame.matrix(table(cw$set, cw$status))
-tabA$scored <- rowSums(tabA[, intersect(c("MATCH","DIFFER"), names(tabA)), drop = FALSE])
-tabA$agree  <- ifelse(tabA$scored > 0, sprintf("%.0f%%", 100*tabA$MATCH/tabA$scored), "-")
-print(tabA)
+# The honest unit is the exercise question, not the row. Several rows can come
+# from one fitted model.
+uq <- unique(scored_A[, c("source", "status")])
+ux <- tapply(uq$status, uq$source, function(s) if (any(s == "DIFFER")) "DIFFER" else "MATCH")
+cat("\nUNIT LEVEL (one unit per exercise question), the headline:\n  ",
+    fmt_cp(sum(ux == "MATCH"), length(ux)), "\n")
+cat("  questions that disagree:", paste(names(ux)[ux == "DIFFER"], collapse = ", "), "\n")
 
+cat("\nBy problem set:\n")
 # The 8 discrepancies are not 8 independent events. Documented root causes:
 causes <- data.frame(
   cause = c("DESeq2 size factors: 1 of 51 taxa present in every sample",
@@ -71,7 +87,10 @@ cat("Claims:", nrow(cl), "across", length(unique(cl$study_id)), "studies",
     "(range", paste(range(table(cl$study_id)), collapse = "-"), "per study)\n\n")
 print(table(cl$new_status))
 
-cat("\n-- PRIMARY ENDPOINT: one pre-designated claim per study --\n")
+cat("\n-- PRIMARY CLAIM (POST HOC, not an endpoint result) --\n")
+cat("   No report designated a primary_claim_id. These were chosen during this\n")
+cat("   analysis with the results already visible, so this is a description of\n")
+cat("   a selection, not a test. It must not be carried into the protocol.\n")
 pri <- subset(cl, primary == "TRUE")
 stopifnot(nrow(pri) == 10, !anyDuplicated(pri$study_id))
 print(table(pri$new_status))
@@ -81,6 +100,12 @@ cat("\n-- SECONDARY: all scorable claims --\n")
 cat("Reproduced:", fmt_ci(sum(cl$new_status == "reproduced"), sum(cl$scorable)), "\n")
 cat("  denominator excludes", sum(!cl$scorable), "unscorable claims, each named:\n")
 print(table(droplevels(cl$new_status[!cl$scorable])))
+
+cat("\n-- RECONCILIATION AGAINST THE RUN LOGS --\n")
+cat("claims in this table:", nrow(cl),
+    "| passed through score_claims():", sum(cl$scored_by_function == "TRUE"),
+    "| adjudicated in report prose only:", sum(cl$scored_by_function == "FALSE"), "\n")
+print(table(cl$study_id, cl$scored_by_function))
 
 cat("\n-- ADJUDICABILITY: could the claim be scored at all? --\n")
 cat("Scorable:", fmt_ci(sum(cl$scorable), nrow(cl)), "\n")

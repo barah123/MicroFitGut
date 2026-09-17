@@ -45,9 +45,21 @@ The revision and its reasons are in `Expert notes/claim-survival-protocol.md`
 objects, QIIME 2 BIOM with and without taxonomy, HDF5 BIOM with empty metadata
 groups, loose delimited tables, MetaPhlAn profiles both merged and per-sample,
 and curatedMetagenomicData objects. Twenty defects were found and fixed, all
-before any corpus study was scored, and **every one of them biased toward
-reporting non-reproduction**, which is the direction that would have flattered
-the tool.
+before any corpus study was scored.
+
+**Correction on the direction of those defects.** An earlier version of this file
+said every one of them biased toward reporting non-reproduction. That claim does
+not hold for all twenty, and the reports themselves show why. Defects #14 and #16
+are both failures to detect a clustering variable, and an undetected cluster
+means the naive unstratified test runs, which inflates significance. That is the
+anti-conservative direction, and it makes a claim of difference *more* likely to
+be scored as reproduced. The Ramos report says so in as many words. It happened
+to work the other way in that study only because the claim there was a null one.
+
+The defensible statement is narrower: every defect was found and fixed before any
+corpus study was scored, and the direction of bias must be recorded per defect
+rather than asserted in aggregate. That per-defect register does not yet exist
+and is listed as outstanding work.
 
 **Not established: a failure rate.** The pilot contains **no statistically
 significant contradiction of any paper**. The four items recorded as failures are
@@ -62,10 +74,46 @@ and of reproduction conditional on adjudicability approximately zero, on ten
 studies with seven at the boundary. Those numbers describe data deposition, not
 analytical fragility.
 
+## What can and cannot be traced
+
+**Correction.** An earlier version of this file stated that no run artifacts
+survived. That was wrong, and it understated the evidence. What actually exists:
+
+| | |
+|---|---|
+| Run directories under `output/` for the ten studies | 48 |
+| Carrying a `run_log.csv` | 39, holding 293 logged rows |
+| Carrying `tables/*.csv` | **0** |
+| Carrying `figures/` | **0** |
+
+So a value that was written to a log can be traced to the run that produced it.
+A value that lived only in a result table cannot, because no result table was
+saved. Under the project's first standing rule that gap still has to be closed
+before the main study, but it is narrower than previously stated.
+
+Two further traceability gaps the logs expose:
+
+1. **The claim counts in these reports do not all match the runs.** Summing the
+   final per-study `claims_scored` events gives **53 claims**; the reports
+   describe **57**. The four extra are in A2 and A4, where claims were settled in
+   the report prose without being passed through `score_claims()`. They are real
+   claims the papers made, but they carry no logged adjudication.
+2. **The encoded claim objects were not saved.** The `type`, `comparator`,
+   `tolerance` and `contrast` used for each claim exist only as report prose.
+   A0's `ten-genera` verdict, for instance, rests on a tolerance of 3 against a
+   claim of 10, a window of 7 to 13, which is recoverable only from the text.
+
 ## Known gap
 
-No run artifacts survive from these ten studies: there is no `output/` directory,
-`run_log.csv` or `tables/*.csv` for any of them, so no number in these reports can
-be checked against the run that produced it. The project's first standing rule
-requires exactly that check. Retaining one complete run directory per study,
-along with the encoded claim objects, is a prerequisite for the main study.
+Two verdicts changed after the scoring code was changed in response to seeing a
+result, and both should be read with that in mind:
+
+- **S1 Vogtmann.** Two verdict runs 40 seconds apart, `held=6` then `held=8`,
+  either side of adding the `da_null` claim type. The change encodes a kind of
+  claim the schema could not previously express, which is a defensible reason,
+  but the sequence was score, inspect, change the scorer, rescore.
+- **A0 Pérez-Losada.** Two verdict runs, recovery 20% then 30%, either side of a
+  taxon-separator fix.
+
+Disclosed, both are ordinary instrument development. Undisclosed, either is
+something an adversarial reader would find in the logs.

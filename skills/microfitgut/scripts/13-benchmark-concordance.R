@@ -877,10 +877,21 @@ concordance_verdict <- function(claims = NULL, alpha = NULL, beta = NULL,
       stop(sprintf("primary_claim_id '%s' is not among the scored claims: %s",
                    primary_claim_id, paste(claims$id, collapse = ", ")), call. = FALSE)
     }
+    # not_tested is scorable, but it is evidence about THIS reanalysis's
+    # prevalence filter, not about the paper. Left in the H1 denominator it
+    # dichotomizes to a non-reproduction, so a filter threshold under the
+    # analyst's control would score as a failed claim. It is flagged for
+    # exclusion instead, and named, never silently dropped.
+    st <- hit$status[1]
     primary <- list(
-      id = primary_claim_id, status = hit$status[1], detail = hit$detail[1],
-      adjudicable = hit$status[1] %in% MFG_CLAIM_SCORABLE,
-      reproduced = identical(hit$status[1], "reproduced"))
+      id = primary_claim_id, status = st, detail = hit$detail[1],
+      adjudicable = st %in% MFG_CLAIM_SCORABLE,
+      reproduced = identical(st, "reproduced"),
+      h1_eligible = st %in% c("reproduced", "not_reproduced", "not_licensed"),
+      exclusion_reason = if (identical(st, "not_tested"))
+        paste("headline claim was filtered out before testing; the threshold is",
+              "an analyst choice, so this is attrition to report, not a",
+              "non-reproduction to count") else NULL)
   }
 
   # ---- Secondary: proportion of scorable claims reproduced -----------------
@@ -925,8 +936,11 @@ print.mfg_verdict <- function(x, ...) {
     cat(sprintf("  claim      %s\n", x$primary$id))
     cat(sprintf("  status     %s\n", x$primary$status))
     cat(sprintf("  H1 outcome %s\n",
-        if (!x$primary$adjudicable) "NOT ADJUDICABLE - excluded from the denominator"
+        if (!isTRUE(x$primary$h1_eligible)) "EXCLUDED from the H1 denominator"
         else if (x$primary$reproduced) "reproduced" else "not reproduced"))
+    if (!is.null(x$primary$exclusion_reason)) {
+      cat(strwrap(x$primary$exclusion_reason, width = 74, prefix = "  "), sep = "\n")
+    }
     cat(sprintf("  %s\n\n", x$primary$detail))
   } else {
     cat("=== No primary claim designated ===\n")
