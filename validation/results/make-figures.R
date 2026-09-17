@@ -10,7 +10,7 @@
 # dark-mode requirement applies to HTML charts that re-render per viewer; a
 # fixed raster cannot. Stated rather than skipped silently.
 #
-# The table view required for accessibility is claims-rescored.csv and
+# The table view required for accessibility is claims-scored.csv and
 # validation-results.xlsx in this directory: every value plotted is readable
 # there without colour.
 
@@ -85,11 +85,11 @@ sv <- function(p, n, w, h) {
          dpi = 300, bg = SURFACE); n
 }
 
-cl <- read.csv("claims-rescored.csv", stringsAsFactors = FALSE)
-cl$scorable <- cl$new_status %in% MFG_CLAIM_SCORABLE
+cl <- read.csv("claims-scored.csv", stringsAsFactors = FALSE)
+cl$scorable <- cl$status %in% MFG_CLAIM_SCORABLE
 cl$label    <- paste0(cl$study_id, "  ", cl$study, " ", cl$year)
 # Fold every unscorable reason into one class for the stacked view.
-cl$plot_status <- ifelse(cl$scorable, cl$new_status, "outside the denominator")
+cl$plot_status <- ifelse(cl$scorable, cl$status, "outside the denominator")
 PS_LEV <- c(names(STATUS), "outside the denominator")
 PS_COL <- c(STATUS, "outside the denominator" = OUTSIDE)
 cl$plot_status <- factor(cl$plot_status, levels = PS_LEV)
@@ -115,7 +115,7 @@ sv(f1, "F1-claim-status-by-study", 8.2, 4.6)
 ## ---- F2. Adjudicability against reproduction --------------------------------
 f2d <- cl %>% group_by(label, technology) %>%
   summarise(n = n(), scorable = sum(scorable),
-            repro = sum(new_status == "reproduced"), .groups = "drop") %>%
+            repro = sum(status == "reproduced"), .groups = "drop") %>%
   mutate(Adjudicability = scorable / n,
          `Reproduction | adjudicable` = ifelse(scorable > 0, repro / scorable, NA))
 f2 <- f2d %>% select(label, technology, Adjudicability, `Reproduction | adjudicable`) %>%
@@ -136,11 +136,11 @@ f2 <- f2d %>% select(label, technology, Adjudicability, `Reproduction | adjudica
 sv(f2, "F2-adjudicability-vs-reproduction", 5.6, 4.8)
 
 ## ---- F3. Every scored claim by reanalysis p-value ---------------------------
-f3d <- cl %>% filter(!is.na(p_value), new_status %in% c("reproduced", "not_reproduced")) %>%
+f3d <- cl %>% filter(!is.na(p_value), status %in% c("reproduced", "not_reproduced")) %>%
   mutate(p = as.numeric(p_value),
          dir = ifelse(direction_agrees == "TRUE", "direction agrees", "direction reversed"),
          lab = ifelse(nchar(claim_id) > 22, paste0(substr(claim_id, 1, 21), "\u2026"), claim_id),
-         new_status = factor(new_status, levels = c("reproduced", "not_reproduced")),
+         status = factor(status, levels = c("reproduced", "not_reproduced")),
          panel = factor(claim_polarity, levels = c("difference", "null"),
                         labels = c("paper asserted\na difference",
                                    "paper asserted\nno difference")))
@@ -149,7 +149,7 @@ f3 <- ggplot(f3d, aes(p, reorder(paste0(study_id, "  ", lab), -p))) +
            fill = "#0b0b0b", alpha = 0.045) +
   # Dashed is correct here: this is a threshold, not a gridline.
   geom_vline(xintercept = 0.05, linetype = "22", colour = MUTED, linewidth = 0.4) +
-  geom_point(aes(colour = new_status, shape = dir), size = 2.4, stroke = 0.9) +
+  geom_point(aes(colour = status, shape = dir), size = 2.4, stroke = 0.9) +
   facet_grid(panel ~ ., scales = "free_y", space = "free_y", switch = "y") +
   scale_x_log10(breaks = c(1e-15, 1e-10, 1e-5, 0.05, 1),
                 labels = c("1e-15", "1e-10", "1e-5", "0.05", "1"),
@@ -206,7 +206,7 @@ f5d <- data.frame(
                 levels = c("Course material  (verification)",
                            "Published papers  (reproducibility)")),
   what = c("per exercise\nquestion", "per row\n(not independent)",
-           "primary claim\n(POST HOC)", "scorable claims\nreproduced"),
+           "primary claim\n(descriptive)", "scorable claims\nreproduced"),
   x = c(28, 84, 10, 30), n = c(34, 92, 10, 40), stringsAsFactors = FALSE)
 f5d$what <- factor(f5d$what, levels = f5d$what)
 f5d$p <- f5d$x / f5d$n
@@ -239,8 +239,8 @@ F6_MEANING <- c(schema_gap        = "no claim type expresses it",
                 not_attempted     = "the analyst did not run it",
                 data_absent       = "never deposited",
                 contrast_mismatch = "subgroup not reconstructable")
-f6d <- cl %>% filter(!scorable) %>% count(new_status) %>%
-  mutate(lab = paste0(new_status, "\n", F6_MEANING[as.character(new_status)]),
+f6d <- cl %>% filter(!scorable) %>% count(status) %>%
+  mutate(lab = paste0(status, "\n", F6_MEANING[as.character(status)]),
          lab = reorder(lab, n))
 f6 <- ggplot(f6d, aes(n, lab)) +
   geom_col(fill = OUTSIDE, width = 0.6) +
@@ -286,7 +286,7 @@ if (requireNamespace("patchwork", quietly = TRUE)) {
     caption = paste("Palette: slots from a CVD-validated categorical theme;",
                     "every set run through validate_palette.js (all-pairs CVD",
                     "ΔE 13.0, normal-vision 16.3, contrast >= 3:1).",
-                    "\nTable view: claims-rescored.csv and validation-results.xlsx",
+                    "\nTable view: claims-scored.csv and validation-results.xlsx",
                     "in this directory carry every plotted value without colour."),
     theme = theme_pub(12) +
       theme(plot.title = element_text(face = "bold", size = 20),

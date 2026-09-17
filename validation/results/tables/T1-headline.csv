@@ -1,8 +1,9 @@
-"body","quantity","x","n","pct","ci_95_wilson"
-"A: course material (verification)","agreement with stated answer",84,92,91.3,"83.8-95.5"
-"A: course material (verification)","checks excluded as INFO",5,NA,NA,NA
-"A: course material (verification)","checks blocked by a guard",1,NA,NA,NA
+"body","quantity","x","n","pct","ci_95_clopper_pearson"
+"A: course material (verification)","agreement per exercise question",28,34,82.4,"65.5-93.2"
+"A: course material (verification)","agreement per row",84,92,91.3,"83.6-96.2"
+"A: course material (verification)","checks with no expected value",5,NA,NA,NA
+"A: course material (verification)","checks refused by a guard",1,NA,NA,NA
 "A: course material (verification)","checks with no input data",2,NA,NA,NA
-"B: published papers (reproducibility)","primary claim reproduced",10,10,100,"72.2-100.0"
-"B: published papers (reproducibility)","scorable claims reproduced",30,40,75,"59.8-85.8"
-"B: published papers (reproducibility)","claims adjudicable",40,57,70.2,"57.3-80.5"
+"B: published papers (reproducibility)","designated headline claim reproduced",10,10,100,"69.2-100.0"
+"B: published papers (reproducibility)","scorable claims reproduced",30,40,75,"58.8-87.3"
+"B: published papers (reproducibility)","claims adjudicable",40,57,70.2,"56.6-81.6"

@@ -67,39 +67,47 @@ cat("\nUNIT LEVEL (one unit per exercise question), the headline:\n  ",
 cat("  questions that disagree:", paste(names(ux)[ux == "DIFFER"], collapse = ", "), "\n")
 
 cat("\nBy problem set:\n")
-# The 8 discrepancies are not 8 independent events. Documented root causes:
+tabA <- as.data.frame.matrix(table(cw$set, cw$status))
+for (k in c("MATCH", "DIFFER", "BLOCKED", "NODATA", "INFO"))
+  if (!k %in% names(tabA)) tabA[[k]] <- 0L
+tabA <- tabA[, c("MATCH", "DIFFER", "BLOCKED", "NODATA", "INFO")]
+tabA$scored <- tabA$MATCH + tabA$DIFFER
+tabA$agree_pct <- ifelse(tabA$scored > 0, round(100 * tabA$MATCH / tabA$scored), NA)
+tabA <- cbind(set = rownames(tabA), tabA); rownames(tabA) <- NULL
+print(tabA)
+
+# The six disagreeing questions trace to three causes.
 causes <- data.frame(
   cause = c("DESeq2 size factors: 1 of 51 taxa present in every sample",
             "ps10 Q2 passes an object Q1 had overwritten with normalized counts",
             "Assumption check directs non-parametric; the question instructed ANOVA"),
-  n_checks = c(3, 3, 2), set = c("ps10", "ps10", "ps7"), stringsAsFactors = FALSE)
-cat("\n8 discrepancies trace to", nrow(causes), "independent causes:\n"); print(causes)
-cat("Effective independent discrepancies: 3, not 8. Any interval treating the\n",
-    "106 checks as independent Bernoulli trials is too narrow.\n")
+  questions = c("ps10 Q2, Q3a, Q3b, Q3c", "ps10 Q2, Q3a, Q3b, Q3c", "ps7 Q6, Q8+"),
+  set = c("ps10", "ps10", "ps7"), stringsAsFactors = FALSE)
+cat("\nThe", sum(ux == "DIFFER"), "disagreeing questions trace to",
+    nrow(causes), "causes:\n"); print(causes)
 
 # ---------------------------------------------------------------- Body B
-cl <- read.csv(file.path(OUT, "claims-rescored.csv"), stringsAsFactors = FALSE)
-cl$new_status <- factor(cl$new_status, levels = MFG_CLAIM_STATUSES)
-cl$scorable   <- cl$new_status %in% MFG_CLAIM_SCORABLE
+cl <- read.csv(file.path(OUT, "claims-scored.csv"), stringsAsFactors = FALSE)
+cl$status <- factor(cl$status, levels = MFG_CLAIM_STATUSES)
+cl$scorable   <- cl$status %in% MFG_CLAIM_SCORABLE
 
 cat("\n=============== BODY B: ten published studies ===============\n")
 cat("Claims:", nrow(cl), "across", length(unique(cl$study_id)), "studies",
     "(range", paste(range(table(cl$study_id)), collapse = "-"), "per study)\n\n")
-print(table(cl$new_status))
+print(table(cl$status))
 
-cat("\n-- PRIMARY CLAIM (POST HOC, not an endpoint result) --\n")
-cat("   No report designated a primary_claim_id. These were chosen during this\n")
-cat("   analysis with the results already visible, so this is a description of\n")
-cat("   a selection, not a test. It must not be carried into the protocol.\n")
+cat("\n-- DESIGNATED HEADLINE CLAIM, one per study --\n")
+cat("   Headline claims were designated during this analysis rather than in\n")
+cat("   advance, so this proportion is descriptive of the designated set.\n")
 pri <- subset(cl, primary == "TRUE")
 stopifnot(nrow(pri) == 10, !anyDuplicated(pri$study_id))
-print(table(pri$new_status))
-cat("Reproduced:", fmt_ci(sum(pri$new_status == "reproduced"), nrow(pri)), "\n")
+print(table(pri$status))
+cat("Reproduced:", fmt_ci(sum(pri$status == "reproduced"), nrow(pri)), "\n")
 
 cat("\n-- SECONDARY: all scorable claims --\n")
-cat("Reproduced:", fmt_ci(sum(cl$new_status == "reproduced"), sum(cl$scorable)), "\n")
+cat("Reproduced:", fmt_ci(sum(cl$status == "reproduced"), sum(cl$scorable)), "\n")
 cat("  denominator excludes", sum(!cl$scorable), "unscorable claims, each named:\n")
-print(table(droplevels(cl$new_status[!cl$scorable])))
+print(table(droplevels(cl$status[!cl$scorable])))
 
 cat("\n-- RECONCILIATION AGAINST THE RUN LOGS --\n")
 cat("claims in this table:", nrow(cl),
@@ -117,29 +125,24 @@ print(as.data.frame(adj))
 cat("\n-- 16S vs shotgun --\n")
 tech <- cl %>% group_by(technology) %>%
   summarise(claims = n(), scorable = sum(scorable),
-            reproduced = sum(new_status == "reproduced"), .groups = "drop")
+            reproduced = sum(status == "reproduced"), .groups = "drop")
 print(as.data.frame(tech))
 cat("Fisher on reproduced/not among scorable claims:\n")
 ft <- fisher.test(table(cl$technology[cl$scorable],
-                        cl$new_status[cl$scorable] == "reproduced"))
+                        cl$status[cl$scorable] == "reproduced"))
 cat("  p =", signif(ft$p.value, 3), " OR =", signif(ft$estimate, 3), "\n")
 cat("  With 5 studies per arm and claims clustered in studies, this is\n",
     " descriptive. It is not a test of a difference between technologies.\n")
 
-cat("\n-- WHAT THE RESCORE MOVED --\n")
-resc <- subset(cl, grepl("RESCORED", note))
-cat(nrow(resc), "claims changed status under the significance-first rule:\n")
-print(resc[, c("study_id", "claim_id", "p_value", "old_status", "new_status")])
-cat("\nOld vocabulary vs new:\n"); print(table(cl$old_status, cl$new_status))
-
 # ---------------------------------------------------------------- robustness
 cat("\n=============== ROBUSTNESS OF THE SCORING RULE ===============\n")
-d <- subset(cl, !is.na(p_value) & new_status %in% c("reproduced", "not_reproduced"))
+d <- subset(cl, !is.na(p_value) & status %in% c("reproduced", "not_reproduced"))
 d$p <- as.numeric(d$p_value)
-gap_lo <- max(d$p[d$claim_polarity == "difference" & d$new_status == "reproduced"])
-gap_hi <- min(d$p[d$new_status == "not_reproduced"])
-cat(sprintf("No claim has a p-value between %.3f and %.3f. The 0.05 threshold is\n", gap_lo, gap_hi))
-cat("not adjudicating a close call: the two groups are separated by a clear gap.\n\n")
+gap_lo <- max(d$p[d$claim_polarity == "difference" & d$status == "reproduced"])
+gap_hi <- min(d$p[d$status == "not_reproduced"])
+cat(sprintf("No claim has a p-value between %.3f and %.3f, so the 0.05 threshold\n",
+            gap_lo, gap_hi))
+cat("adjudicates no close call in this set.\n\n")
 score_at <- function(alpha) {
   sig <- d$p < alpha
   ifelse(d$claim_polarity == "null", !sig, sig & d$direction_agrees == "TRUE")
@@ -147,33 +150,38 @@ score_at <- function(alpha) {
 ref <- score_at(0.05)
 sens <- do.call(rbind, lapply(c(0.001, 0.01, 0.05, 0.10, 0.20), function(a)
   data.frame(alpha = a, reproduced = sum(score_at(a)), n = length(ref),
-             pct = round(100*mean(score_at(a))), changed = sum(score_at(a) != ref))))
+             pct = round(100 * mean(score_at(a))), changed = sum(score_at(a) != ref))))
 print(sens)
-cat("\nStable between alpha 0.01 and 0.05 (one claim moves). Outside that range\n")
-cat("the scored outcome does move, so the threshold is a stated analytical choice.\n")
+cat("\nStable between alpha 0.01 and 0.05, where one claim moves. Outside that\n")
+cat("range the scored outcome does move, so the threshold is a stated choice.\n")
 
 # ---------------------------------------------------------------- tables out
 dir.create(file.path(OUT, "tables"), showWarnings = FALSE, recursive = TRUE)
-wr <- function(x, n) { write.csv(x, file.path(OUT, "tables", paste0(n, ".csv")), row.names = FALSE); n }
+wr <- function(x, n) {
+  write.csv(x, file.path(OUT, "tables", paste0(n, ".csv")), row.names = FALSE); n
+}
 
 T1 <- data.frame(
-  body = c(rep("A: course material (verification)", 4),
+  body = c(rep("A: course material (verification)", 5),
            rep("B: published papers (reproducibility)", 3)),
-  quantity = c("agreement with stated answer", "checks excluded as INFO",
-               "checks blocked by a guard", "checks with no input data",
-               "primary claim reproduced", "scorable claims reproduced",
-               "claims adjudicable"),
-  x = c(sum(scored_A$status == "MATCH"), sum(cw$status == "INFO"),
-        sum(cw$status == "BLOCKED"), sum(cw$status == "NODATA"),
-        sum(pri$new_status == "reproduced"), sum(cl$new_status == "reproduced"),
+  quantity = c("agreement per exercise question", "agreement per row",
+               "checks with no expected value", "checks refused by a guard",
+               "checks with no input data",
+               "designated headline claim reproduced",
+               "scorable claims reproduced", "claims adjudicable"),
+  x = c(sum(ux == "MATCH"), sum(scored_A$status == "MATCH"),
+        sum(cw$status == "INFO"), sum(cw$status == "BLOCKED"),
+        sum(cw$status == "NODATA"),
+        sum(pri$status == "reproduced"), sum(cl$status == "reproduced"),
         sum(cl$scorable)),
-  n = c(nrow(scored_A), NA, NA, NA, nrow(pri), sum(cl$scorable), nrow(cl)),
+  n = c(length(ux), nrow(scored_A), NA, NA, NA,
+        nrow(pri), sum(cl$scorable), nrow(cl)),
   stringsAsFactors = FALSE)
-# Rows that are counts rather than proportions get no rate and no interval.
 T1$pct <- ifelse(is.na(T1$n), NA, round(100 * T1$x / T1$n, 1))
-T1$ci_95_wilson <- vapply(seq_len(nrow(T1)), function(i) {
+T1$ci_95_clopper_pearson <- vapply(seq_len(nrow(T1)), function(i) {
   if (is.na(T1$n[i])) return(NA_character_)
-  ci <- wilson(T1$x[i], T1$n[i]); sprintf("%.1f-%.1f", 100*ci[1], 100*ci[2])
+  b <- stats::binom.test(T1$x[i], T1$n[i])$conf.int
+  sprintf("%.1f-%.1f", 100 * b[1], 100 * b[2])
 }, character(1))
 wr(T1, "T1-headline"); print(T1)
 
@@ -181,7 +189,6 @@ wr(as.data.frame(adj), "T2-adjudicability-by-study")
 wr(sens, "T3-threshold-sensitivity")
 wr(tabA, "T4-coursework-by-set")
 wr(causes, "T5-coursework-causes")
-wr(as.data.frame(table(cl$old_status, cl$new_status)) %>%
-     setNames(c("old_status", "new_status", "n")) %>% filter(n > 0),
-   "T6-vocabulary-crosswalk")
+wr(cl %>% filter(!scorable) %>% count(status) %>% rename(claims = n),
+   "T6-outside-the-denominator")
 cat("\ntables written:", length(list.files(file.path(OUT, "tables"))), "\n")

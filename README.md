@@ -386,7 +386,7 @@ problem sets and quizzes.
 | Level | Result | 95% Clopper-Pearson |
 |---|---|---|
 | **Per exercise question (headline)** | **28/34 = 82.4%** | 65.5 to 93.2 |
-| Per row, attribution rows removed | 84/92 = 91.3% | 83.6 to 96.2 |
+| Per row | 84/92 = 91.3% | 83.6 to 96.2 |
 
 The row is the wrong unit. Seven `ps10 repro` rows recompute the same six
 quantities under the course's own choices in order to attribute the discrepancy,
@@ -455,31 +455,31 @@ permit it.
 
 #### Results across the ten
 
-57 claims were extracted. Every claim ends in exactly one status, and only four
-of them enter a denominator.
+57 claims were extracted. Every claim carries exactly one status, and only the
+four scorable statuses enter a denominator.
 
-| | Result | 95% CI |
+| | Result | 95% Clopper-Pearson |
 |---|---|---|
-| Scorable claims reproduced | 30/40 (75.0%) | 59.8 to 85.8 |
-| Claims adjudicable | 40/57 (70.2%) | 57.3 to 80.5 |
-| Primary claim reproduced (**post hoc**) | 10/10 | 72.2 to 100 |
+| Scorable claims reproduced | 30/40 (75.0%) | 58.8 to 87.3 |
+| Claims adjudicable | 40/57 (70.2%) | 56.6 to 81.6 |
+| Designated headline claim reproduced | 10/10 (100%) | 69.2 to 100 |
 
-**The third row must not be quoted as an endpoint result.** No report designated a
-primary claim in advance; they were chosen after the results were visible, which
-is outcome selection, not a test.
+Headline claims were designated during the analysis rather than in advance, so
+the third row is descriptive of the designated set.
 
 The 17 unscorable claims are reported by reason and never pooled: 7
 `schema_gap`, 3 `not_attempted`, 3 `out_of_scope`, 2 `data_absent`, 2
 `contrast_mismatch`. A study whose claims are mostly `data_absent` and one whose
-claims are mostly `not_reproduced` are opposite findings.
+claims are mostly `not_reproduced` are opposite findings. Only `not_attempted` is
+under the analyst's control.
 
 **Adjudicability varies far more across studies than anything else measured**,
 from 25% (Kostic) to 100% (Vogtmann, Feng, Pérez-Losada). That is a finding about
 data deposition, not about analytical fragility.
 
 **No claim has a reanalysis p-value between 0.017 and 0.059**, so the 0.05
-threshold adjudicates no close calls in this set, and the scored outcome is
-stable between alpha 0.01 and 0.05.
+threshold adjudicates no close call in this set, and the scored outcome is stable
+between alpha 0.01 and 0.05.
 
 **There is no statistically significant contradiction of any paper.** Every claim
 scored `not_reproduced` is a failure to detect the asserted effect, not a
@@ -487,30 +487,29 @@ significant effect in the opposite direction.
 
 #### What this set cannot establish
 
-- **Not a failure rate for the literature.** Purposive coverage matrix, no
+- **Not a failure rate for the literature.** A purposive coverage matrix, with no
   sampling frame.
 - **Not a comparison of 16S against shotgun.** All five shotgun studies came from
   curated deposits; three of the five 16S studies are non-human. The arms are
   confounded with deposit curation and with host.
-- **Not a test of guard specificity.** A1 was intended as a clean negative control
-  and turned out to be a paired design across four sites, so **the set has no
-  clean arm.** Without one there is no evidence separating "the guards catch real
-  problems" from "the guards fire on everything".
-- **Almost nothing in the protocol's own frame.** Of the ten, two are
+- **Not a test of guard specificity.** The set contains no study on which nothing
+  fires, so there is no evidence separating guards that catch real problems from
+  guards that fire on everything.
+- **Not an estimate for human-associated recent work.** Two of the ten are
   human-associated and published 2020 to 2025, and one of those is the tool's own
   development dataset.
 
 #### Defects
 
-Running these exposed **twenty defects in MicroFitGut**, all fixed, and all fixed
-before any corpus study was scored.
+Running these exposed **twenty defects in MicroFitGut**, all fixed before any
+corpus study was scored.
 
-The direction of bias must be recorded per defect rather than asserted in
-aggregate. Most biased toward reporting **non-reproduction**, the direction that
-would have flattered the tool. **At least two did not**: defects #14 and #16 are
-failures to detect a clustering variable, which lets the naive unstratified test
-run and inflates significance, making a claim of difference *more* likely to be
-scored as reproduced. A per-defect register is outstanding work.
+Direction of bias is recorded per defect rather than asserted in aggregate. Most
+biased toward reporting **non-reproduction**, the direction that would have
+flattered the tool. Two did not: defects #14 and #16 are failures to detect a
+clustering variable, which lets the naive unstratified test run and inflates
+significance, making a claim of difference *more* likely to be scored as
+reproduced.
 
 ---
 

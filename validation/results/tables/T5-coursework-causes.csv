@@ -1,4 +1,4 @@
-"cause","n_checks","set"
-"DESeq2 size factors: 1 of 51 taxa present in every sample",3,"ps10"
-"ps10 Q2 passes an object Q1 had overwritten with normalized counts",3,"ps10"
-"Assumption check directs non-parametric; the question instructed ANOVA",2,"ps7"
+"cause","questions","set"
+"DESeq2 size factors: 1 of 51 taxa present in every sample","ps10 Q2, Q3a, Q3b, Q3c","ps10"
+"ps10 Q2 passes an object Q1 had overwritten with normalized counts","ps10 Q2, Q3a, Q3b, Q3c","ps10"
+"Assumption check directs non-parametric; the question instructed ANOVA","ps7 Q6, Q8+","ps7"
