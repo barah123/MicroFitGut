@@ -1,15 +1,15 @@
 # Benchmark: Lucas et al. (2017), the ant-built home
 
-Study **A3** of the validation matrix — the minimal-input test, and the study
+Study **A3** of the validation matrix, the minimal-input test, and the study
 that showed "data available" and "data reusable" are different tests.
 
 | | |
 |---|---|
 | **Paper** | Lucas J, Bill B, Stevenson B, Kaspari M. The microbiome of the ant-built home: the microbial communities of a tropical arboreal ant and its nest. *Ecosphere.* 2017;8(2):e01639. |
-| **Data** | Dryad [10.5061/dryad.ph2c5](https://doi.org/10.5061/dryad.ph2c5) — one HDF5 BIOM, 14.4 MB |
+| **Data** | Dryad [10.5061/dryad.ph2c5](https://doi.org/10.5061/dryad.ph2c5), one HDF5 BIOM, 14.4 MB |
 | **Metadata** | **Not in the deposit.** Recovered from NCBI BioSample SAMN04576300–371 |
 | **Design** | Four sample types from 20 *Azteca trigona* colonies, Panama: ant, refuse, nest, soil |
-| **Verdict** | **Incomplete** — 1 claim held, 3 unadjudicated, 0 failed |
+| **Verdict** | **Incomplete**: 1 claim held, 3 unadjudicated, 0 failed |
 
 ---
 
@@ -19,8 +19,8 @@ The Dryad record contains exactly one file: `all_otu_table.biom`, 48,137 taxa ×
 79 samples. It has a DOI, it downloads, it parses, and it contains a valid OTU
 table. It would pass any automated data-availability check.
 
-It is also, on its own, **impossible to analyse**. The sample identifiers are
-bare numeric barcodes — `100044`, `100181`, `100205` — and every claim in the
+It is also, on its own, **impossible to analyze**. The sample identifiers are
+bare numeric barcodes, `100044`, `100181`, `100205`, and every claim in the
 paper is a comparison between ants, refuse, nests and soil. Nothing in the file
 says which sample is which.
 
@@ -46,7 +46,7 @@ BioSample: SAMN04576300; Sample name: 100008
 ```
 
 `Sample name` matches the BIOM's identifiers. Fetching all 72 records rebuilds
-the design — **ant 17, refuse 17, nest 20, soil 18** — and the study becomes
+the design, **ant 17, refuse 17, nest 20, soil 18**, and the study becomes
 analysable.
 
 **This is the finding worth carrying into the thesis.** The data passed every
@@ -69,23 +69,23 @@ in every sample.
 
 ## 3. Results
 
-### 3.1 The four sample types differ — but the claim is not licensed
+### 3.1 The four sample types differ: but the claim is not licensed
 
 | Test | Result |
 |---|---|
 | PERMANOVA (4 types, Bray-Curtis) | R² = 0.2391, F = 7.12, **p = 0.001** |
-| **betadisper** | **p = 0.027 — dispersion heterogeneous** |
+| **betadisper** | **p = 0.027, dispersion heterogeneous** |
 
 Sample type explains 24% of variation in community composition, which is a large
 effect. But dispersion differs significantly between types, so PERMANOVA cannot
 separate a shift in composition from a difference in spread. The paper's claim
-that the ant microbiome is "distinct" is **not contradicted** — it is not
+that the ant microbiome is "distinct" is **not contradicted**: it is not
 licensed by this test.
 
 Given what the data shows, heterogeneous dispersion is expected rather than
 surprising: the paper's own thesis is that ant microbiomes vary *dramatically*
 across colonies while soil does not. Unequal spread between groups is part of
-the finding, not an artefact — which is exactly why PERMANOVA alone cannot carry
+the finding, not an artefact, which is exactly why PERMANOVA alone cannot carry
 the claim here.
 
 ### 3.2 Mean between-type Bray-Curtis
@@ -104,7 +104,7 @@ The nest claim is directly supported: **nest–soil 0.831 < nest–ant 0.857**. 
 are built from ant exudates and chewed plant fibre, and the paper predicted their
 microbiota would reflect the ants. They resemble the soil instead.
 
-### 3.3 *Lactobacillus* drives the variation — strongly supported
+### 3.3 *Lactobacillus* drives the variation: strongly supported
 
 | Type | mean | sd | range |
 |---|---|---|---|
@@ -115,7 +115,7 @@ microbiota would reflect the ants. They resemble the soil instead.
 
 *Lactobacillus* is **25-fold more abundant in ants** than in any other sample
 type (Wilcoxon ant vs soil p = 2.2e-07), and its range within ants spans almost
-the entire possible scale — from 0.6% to 78% of the community. That is the
+the entire possible scale, from 0.6% to 78% of the community. That is the
 "dimorphic across colonies" pattern the paper describes, and it is the single
 clearest result in this study.
 
@@ -130,7 +130,7 @@ Claims that held:
   + lactobacillus-ants : higher in ant, 33.5% vs 1.2% in soil, p = 2.2e-07
 
 Claims NOT adjudicated:
-  ? types-differ       : dispersion heterogeneous — PERMANOVA does not license
+  ? types-differ       : dispersion heterogeneous: PERMANOVA does not license
                          a composition claim
   ? nest-like-soil     : qualitative; the distance matrix supports it
                          (nest-soil 0.831 < nest-ant 0.857) but no claim type
@@ -139,7 +139,7 @@ Claims NOT adjudicated:
 ```
 
 Nothing failed. The verdict is `incomplete` rather than `reproduced` because
-three of four claims could not be settled by the scoring machinery — one because
+three of four claims could not be settled by the scoring machinery, one because
 the evidence does not license it, two because they are comparative statements the
 schema cannot express.
 
@@ -147,7 +147,7 @@ schema cannot express.
 
 ## 5. Defects this run exposed
 
-### #12 — `Rank1..Rank7` taxonomy has no usable ranks
+### #12: `Rank1..Rank7` taxonomy has no usable ranks
 
 `import_biom()` returned seven taxonomy columns named `Rank1` through `Rank7`.
 Functionally this is the same failure as S4's single-column lineage: there is no
@@ -155,11 +155,11 @@ Functionally this is the same failure as S4's single-column lineage: there is no
 name finds nothing.
 
 `mfg_split_lineage()` now renames generic `RankN` columns to the standard schema
-when the count matches, strips rank prefixes, and normalises empty strings and
+when the count matches, strips rank prefixes, and normalizes empty strings and
 `"unidentified"` to `NA`. On this dataset that resolved **30,644 of 48,137 taxa
 to genus** and made `tax_glom` work, yielding 1,676 genera.
 
-### #13 — the repeated-measures detector fired on a grouping factor
+### #13: the repeated-measures detector fired on a grouping factor
 
 With BioSample metadata joined, `validate_inputs()` reported:
 
@@ -167,8 +167,8 @@ With BioSample metadata joined, `validate_inputs()` reported:
 > levels.
 
 `host` names the **sample type** (`Azteca trigona ant`, soil, and so on). It is
-the study's grouping variable. Fitting `(1 | host)` would have modelled the
-effect under investigation as noise — the exact inversion of what the guard
+the study's grouping variable. Fitting `(1 | host)` would have modeled the
+effect under investigation as noise, the exact inversion of what the guard
 exists to prevent.
 
 The detector's only structural test was "not unique per row", which any
@@ -190,7 +190,7 @@ The distance matrix answers it unambiguously here, but no claim type encodes it,
 so it could only be recorded as `unscored`.
 
 This is the same gap `da_null` filled for S1, in a different domain. Comparative
-distance claims are common in community ecology — "the gut community resembled
+distance claims are common in community ecology, "the gut community resembled
 the diet more than the environment" is a standard form. A `beta_closer` claim
 type taking `subject`, `closer_to` and `than_to` would settle it from the same
 matrix that is already computed.
@@ -201,7 +201,7 @@ Not implemented here; recorded as the next schema extension.
 
 ## 7. Limitations
 
-1. **Colony structure not modelled.** BioSample's `Replicate` field encodes the
+1. **Colony structure not modeled.** BioSample's `Replicate` field encodes the
    colony number (`ant 1`, `nest 1`), so the design is genuinely paired within
    20 colonies. This reanalysis treats samples as independent, exactly as the
    PERMANOVA above does. Extracting colony and permuting within it would be the
@@ -220,7 +220,7 @@ Not implemented here; recorded as the next schema extension.
 b  <- phyloseq::import_biom("A3/all_otu_table.biom")
 b  <- mfg_split_lineage(b)                 # Rank1..Rank7 -> Kingdom..Species
 
-# metadata is NOT in the deposit — rebuild it from NCBI BioSample
+# metadata is NOT in the deposit: rebuild it from NCBI BioSample
 md <- read.csv("A3/biosample_metadata.csv", stringsAsFactors = FALSE)
 md$type <- sub("\\s*\\d+$", "", md$replicate)     # "ant 1" -> "ant"
 rownames(md) <- md$SampleID

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="MicroFitGut — downstream microbiome analysis agent" width="620">
+  <img src="assets/logo.png" alt="MicroFitGut , downstream microbiome analysis agent" width="620">
 </p>
 
 <p align="center">
@@ -37,8 +37,8 @@ None of those error. All of them produce output you would put in a paper.
 
 MicroFitGut encodes the decisions that prevent them, and **refuses** the
 combinations that cause them. It was built against two Springer textbooks, a
-graduate course's demonstrations and problem sets, and a working Shiny dashboard
-— then validated by re-running that course's stated answers and explaining every
+graduate course's demonstrations and problem sets, and a working Shiny dashboard,
+then validated by re-running that course's stated answers and explaining every
 difference.
 
 ---
@@ -52,16 +52,16 @@ difference.
 The model orchestrates and interprets. The R functions compute. That split is the
 whole design:
 
-- **`reference/`** — 16 documents, ~17,900 words. The judgement: a decision table
+- **`reference/`**: 16 documents, ~17,900 words. The judgment: a decision table
   mapping normalization to the analyses it is valid for, design-to-method tables
   for differential abundance and regression, reporting standards, and a pitfalls
   file covering compositionality, the rarefaction dispute, pseudo-replication,
   structural zeros and taxonomic name instability.
-- **`scripts/`** — 16 R modules, ~7,900 lines, 221 functions. The computation,
+- **`scripts/`**: 16 R modules, ~7,900 lines, 221 functions. The computation,
   with every guard built in and every step logged.
-- **`agents/`** — two auditing subagents that run before a report is final.
+- **`agents/`**: two auditing subagents that run before a report is final.
 
-Nothing is improvised. If a function exists for a step, the agent calls it —
+Nothing is improvised. If a function exists for a step, the agent calls it, 
 because an unlogged computation cannot be traced, and an untraceable number does
 not get reported.
 
@@ -78,9 +78,9 @@ not get reported.
 
 ### 2. Open a Claude Code session
 
-Open a terminal — **Terminal** or **iTerm** on macOS, **Windows Terminal** or
-**PowerShell** on Windows, any shell on Linux — then move to the folder holding
-the data you want to analyse and start Claude Code:
+Open a terminal, **Terminal** or **iTerm** on macOS, **Windows Terminal** or
+**PowerShell** on Windows, any shell on Linux, then move to the folder holding
+the data you want to analyze and start Claude Code:
 
 ```bash
 cd ~/Documents/my-study      # wherever your data lives
@@ -99,7 +99,7 @@ Claude Code takes over the terminal and gives you its own prompt:
 
 **That `>` is the Claude Code prompt, and it is where the next commands go.** If
 you are using the desktop app or an IDE extension, the same prompt appears in
-Claude Code's own panel — you do not need a separate terminal.
+Claude Code's own panel, you do not need a separate terminal.
 
 > **The commands below are slash commands, not shell commands.** They only work
 > at the `>` prompt. Typing them into bash or zsh will fail.
@@ -120,7 +120,7 @@ confirm that the marketplace `microfitgut` was added.
 ```
 
 This installs the plugin itself. The `@microfitgut` suffix names the marketplace
-it comes from — useful once you have several configured.
+it comes from, useful once you have several configured.
 
 **Then restart Claude Code.** Plugins load at startup, so exit with `/exit` (or
 Ctrl-D) and run `claude` again. The skill will not appear until you do.
@@ -134,7 +134,7 @@ claude plugin install microfitgut@microfitgut
 ```
 
 Plugins install to `~/.claude/plugins/`, so **the directory you run this from
-does not matter** — once installed, MicroFitGut is available in every project on
+does not matter**: once installed, MicroFitGut is available in every project on
 your machine.
 </details>
 
@@ -149,7 +149,7 @@ Back at the `>` prompt:
 It should load and describe the eleven stages. Or skip the slash command
 entirely and just describe what you want:
 
-> analyse the 16S data in `ps9.RDS` — does diversity differ by region?
+> analyze the 16S data in `ps9.RDS`: does diversity differ by region?
 
 <details>
 <summary>Removing it again</summary>
@@ -171,7 +171,7 @@ tells you exactly what is missing:
 ```
 MicroFitGut package check: 34 of 37 requirements satisfied
 
-Unavailable — these analyses are blocked until installed:
+Unavailable: these analyses are blocked until installed:
   [alpha] picante   -> install.packages("picante")
   [da]    ANCOMBC   -> BiocManager::install("ANCOMBC")
 ```
@@ -202,16 +202,16 @@ Start Claude Code in the folder holding your data and describe the question. A
 useful request names the file, the grouping variable, and anything about the
 design that matters:
 
-> analyse `data/study.RDS` — does community structure differ by treatment?
+> analyze `data/study.RDS`: does community structure differ by treatment?
 > Samples are repeated within participant, so account for that.
 
 MicroFitGut validates the input first and tells you what it found before running
-anything, so the design detail above is a courtesy rather than a requirement —
+anything, so the design detail above is a courtesy rather than a requirement, 
 it detects repeated measures on its own and will refuse the tests that assume
 independence either way.
 
-It then states its plan — the tests it will run, the thresholds it will use, and
-why — before touching the data. Filters and the primary differential-abundance
+It then states its plan, the tests it will run, the thresholds it will use, and
+why, before touching the data. Filters and the primary differential-abundance
 method are fixed at that point, because choosing them after seeing p-values
 invalidates the false-discovery rate.
 
@@ -227,11 +227,11 @@ invalidates the false-discovery rate.
 
 ### Two modes
 
-**analyse** — eleven stages: intake and validation → plan → QC → normalization →
+**analyze**: eleven stages: intake and validation → plan → QC → normalization →
 alpha diversity → beta diversity → differential abundance → models → composition
 → figures → report.
 
-**benchmark** — reanalyse a dataset whose published result is known, measure
+**benchmark**: reanalyse a dataset whose published result is known, measure
 concordance with the paper, and attribute any divergence to a specific analytical
 decision. A study card records what the paper stated and, more importantly, what
 it did not; unstated parameters become axes in a sensitivity sweep; the dominant
@@ -243,8 +243,8 @@ valid answer the tool will give.
 | Context | How |
 |---|---|
 | Claude Code, interactive | `/microfitgut:microfitgut` |
-| Scripted / non-interactive | `claude -p "analyse the 16S data in data/ by treatment"` |
-| Programmatic | Claude Agent SDK — it keeps the Bash tool, so R works |
+| Scripted / non-interactive | `claude -p "analyze the 16S data in data/ by treatment"` |
+| Programmatic | Claude Agent SDK, it keeps the Bash tool, so R works |
 
 Managed Agents will not work: the hosted sandbox has no R or Bioconductor.
 
@@ -256,7 +256,7 @@ Every figure below is real output from the bundled skin-microbiome study
 (619 taxa × 344 samples, 128 participants, depth 1,107–137,913). Nothing here is
 a mock-up.
 
-### It tells you what the data is before analysing it
+### It tells you what the data is before analyzing it
 
 ```
 === MicroFitGut input validation ===
@@ -281,8 +281,8 @@ WARNINGS (must be stated in the report):
 
 <img src="assets/figures/01_rarefaction.png" alt="Rarefaction curves with the chosen depth of 5,000 reads marked; 51 of 60 samples plateau at a median terminal slope of 0.42 taxa per 1,000 reads." width="100%">
 
-Plateau is decided by the **terminal slope in taxa per 1,000 reads** — how many
-new taxa another 1,000 reads would reveal — not by the slope relative to the start
+Plateau is decided by the **terminal slope in taxa per 1,000 reads**: how many
+new taxa another 1,000 reads would reveal, not by the slope relative to the start
 of the curve, which declares a plateau almost regardless of saturation.
 
 ### Alpha diversity, with the test that was actually run
@@ -293,13 +293,13 @@ n per group on the plot, individual points over the boxes, the test named in the
 subtitle, and the reason for choosing it once beneath. Benjamini-Hochberg is
 applied across indices, because six indices against one variable is six tests.
 
-### Ordination — and the qualification most analyses drop
+### Ordination: and the qualification most analyses drop
 
 <img src="assets/figures/03_ordination.png" alt="PCoA on Bray-Curtis distance. Three body regions separate, but the caption records that within-group dispersion is heterogeneous, so the significant PERMANOVA cannot be attributed to a difference in composition alone." width="100%">
 
 PERMANOVA gives R² = 0.328, p = 0.001 with permutations stratified within
 participant. **But betadisper gives p = 0.001**, so this is *not* reportable as a
-shift in community composition — the groups also differ in how variable they are
+shift in community composition, the groups also differ in how variable they are
 (mean distance to centroid 0.296, 0.286, 0.494). You can see it in the figure: the
 green group is visibly more spread than the other two.
 
@@ -315,7 +315,7 @@ unqualified one.
 <img src="assets/figures/06_volcano.png" alt="Volcano plot of DESeq2 results at genus level, with the adjusted p-value on the y axis and both thresholds drawn." width="100%">
 
 The y axis is the **adjusted** p-value, so the visual threshold is the one the
-claim rests on, and the subtitle reports the tested denominator — not the number
+claim rests on, and the subtitle reports the tested denominator, not the number
 of rows in the table.
 
 <img src="assets/figures/07_da_effects.png" alt="Effect sizes of significant genera, sorted, which is usually more informative than a volcano plot." width="100%">
@@ -325,7 +325,7 @@ of rows in the table.
 <img src="assets/figures/08_prevalence.png" alt="Prevalence against total abundance per taxon, with the 10% prevalence filter drawn, showing the low-prevalence cluster the filter removes." width="100%">
 
 On this study a 10% prevalence filter removes 459 of 602 taxa and **retains 89.3%
-of the reads** — almost all of the multiple-testing burden and almost none of the
+of the reads**: almost all of the multiple-testing burden and almost none of the
 data. The threshold is fixed before any test runs; choosing it after seeing
 p-values invalidates the FDR.
 
@@ -349,10 +349,10 @@ explains the decision and what the valid alternatives are.
 
 ### Two auditing subagents, bundled
 
-- **`microfitgut:statistician`** — design-to-method match, the shifting
+- **`microfitgut:statistician`**: design-to-method match, the shifting
   multiple-testing denominator, REML-vs-ML for model comparison, singular fits,
   Bayesian convergence gates, and post-hoc gating.
-- **`microfitgut:verifier`** — every claim checked against the run's own
+- **`microfitgut:verifier`**: every claim checked against the run's own
   artifacts: `run_log.csv`, `manifest.csv`, `tables/`, `figures/`.
 
 Both know the log format and where to look.
@@ -364,7 +364,7 @@ Both know the log format and where to look.
 MicroFitGut was re-run against every numeric answer stated in a graduate
 microbiome course's problem sets and quizzes.
 
-**106 checks: 90 match, 8 differ, 1 blocked by a guard, 2 have no input data** —
+**106 checks: 90 match, 8 differ, 1 blocked by a guard, 2 have no input data**, 
 92% agreement, and every difference attributed to a specific, reproducible cause.
 
 Exact agreement, to every digit the course printed: all 45 mixed-model checks
@@ -381,7 +381,7 @@ The eight differences resolved to two real problems in the source material:
    taxa; the two size-factor vectors correlate at **−0.10**.
 2. **A variable-shadowing bug** that fed already-normalized counts to DESeq2.
 
-Replicating both choices reproduced the course's numbers exactly — which is what
+Replicating both choices reproduced the course's numbers exactly, which is what
 turns a discrepancy into an attribution.
 
 The exercise also found and fixed **six bugs in MicroFitGut itself**, including a
@@ -392,7 +392,7 @@ silently returned NULL, and log events that never reached disk.
 ### Benchmark against published studies
 
 Beyond the course regression, MicroFitGut is benchmarked against a **set of ten
-published studies — five 16S amplicon, five shotgun metagenomic** — chosen to
+published studies, five 16S amplicon, five shotgun metagenomic**: chosen to
 exercise every input format and design feature the tool claims to handle. This is
 a purposive coverage matrix, not a sample: it tests the software, so the results
 must not be read as a rate at which the literature reproduces.
@@ -422,7 +422,7 @@ permit it. Each report carries the code needed to reproduce it.
 Per-study verdicts are reported in each study's file under [`validation/`](validation/). They are deliberately not summarised here: results across the set belong in a single results table with the accompanying statistics, not spread through a corpus description.
 
 Running these has so far exposed **ten defects in MicroFitGut**, every one biased
-toward reporting non-reproduction — the direction that would have flattered the
+toward reporting non-reproduction, the direction that would have flattered the
 tool. All are fixed, and all were fixed before any corpus study was scored.
 
 ---
@@ -433,7 +433,7 @@ tool. All are fixed, and all were fixed before any corpus study was scored.
 microfitgut/
 ├── skills/microfitgut/
 │   ├── SKILL.md          the 11-stage workflow and benchmark mode
-│   ├── reference/        16 documents — the analytical decisions
+│   ├── reference/        16 documents: the analytical decisions
 │   └── scripts/          16 R modules, 221 functions
 ├── agents/
 │   ├── statistician.md
@@ -446,7 +446,7 @@ microfitgut/
 ## Scope
 
 Downstream only. Reads are already denoised and classified; MicroFitGut starts
-from a feature table. No FASTQ processing, no DADA2, no QIIME 2 — and no workflow
+from a feature table. No FASTQ processing, no DADA2, no QIIME 2, and no workflow
 manager, because a downstream analysis of a cleaned table runs in minutes on a
 laptop and Snakemake or Nextflow would be pure overhead.
 
@@ -460,7 +460,7 @@ Every release is archived on Zenodo with its own DOI.
 > Claude Code* (Version 1.1.0) [Computer software]. Zenodo.
 > https://doi.org/10.5281/zenodo.22731452
 
-**Cite the concept DOI — [`10.5281/zenodo.22731452`](https://doi.org/10.5281/zenodo.22731452) —** which always
+**Cite the concept DOI, [`10.5281/zenodo.22731452`](https://doi.org/10.5281/zenodo.22731452), ** which always
 resolves to the newest release. Use the version DOI
 [`10.5281/zenodo.22731453`](https://doi.org/10.5281/zenodo.22731453) only when you need to pin the exact
 version you ran.
@@ -496,11 +496,11 @@ Grounded in Xia & Sun, *Bioinformatic and Statistical Analysis of Microbiome Dat
 (Springer, 2023); Xia, Sun & Chen, *Statistical Analysis of Microbiome Data with R*
 (Springer, 2018); and course material by Marcos Pérez-Losada. Visual conventions
 carry over from CanisLupus 2.0. Categorical palettes follow Okabe-Ito, continuous
-scales viridis — both colour-vision-safe, because in an ordination colour *is* the
+scales viridis, both colour-vision-safe, because in an ordination colour *is* the
 encoding.
 
-Released under the [MIT License](LICENSE). Use it, change it, build on it — the
+Released under the [MIT License](LICENSE). Use it, change it, build on it, the
 only condition is that the copyright notice travels with it.
 
-MicroFitGut analyses data. It does not replace the judgement of whoever signs the
+MicroFitGut analyses data. It does not replace the judgment of whoever signs the
 paper.

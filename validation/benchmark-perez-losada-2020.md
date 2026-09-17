@@ -2,14 +2,14 @@
 
 A full benchmark-mode run against a published study, alongside the problem-set
 and quiz regression tests. Where those check MicroFitGut against a known answer
-key, this checks it against a paper — reconstructing the analysis, scoring the
+key, this checks it against a paper, reconstructing the analysis, scoring the
 paper's stated claims, and reporting which survive.
 
 | | |
 |---|---|
 | **Paper** | Pérez-Losada M, et al. Testing the "Grandma Hypothesis": characterizing skin microbiome diversity as a project-based learning approach to genomics. *J Microbiol Biol Educ.* 2020;21(1):21.1.7. |
 | **Raw data** | NCBI SRA BioProject [PRJNA553551](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA553551) |
-| **Analysed** | `dataset/ps.RDS` — the processed feature table, 619 taxa × 344 samples, 128 participants, with phylogeny |
+| **Analyzed** | `dataset/ps.RDS`, the processed feature table, 619 taxa × 344 samples, 128 participants, with phylogeny |
 | **Hypothesis** | Body regions washed less often ("grandma hotspots": behind the ears, between the toes, navel) host different microbial communities from regions washed more often (forearms, calves) |
 | **Verdict** | **Partially reproduced** (sweep: 16 configurations, all executed) |
 
@@ -28,7 +28,7 @@ beta-diversity distance, alpha metric, FDR method, covariates, or random
 effects. Each becomes an axis of the sensitivity sweep, because each is a place
 where a careful reader could reasonably choose differently.
 
-This is not unusual for the genre — the study is a teaching paper, and students
+This is not unusual for the genre, the study is a teaching paper, and students
 chose their own tests within MicrobiomeAnalyst. But it means a single
 "replication" of this analysis does not exist; a family of defensible ones does.
 
@@ -59,7 +59,7 @@ The third is the crux. The paper's analyses treat samples as independent.
 
 ## 3. Results
 
-### Alpha diversity — the claim holds
+### Alpha diversity: the claim holds
 
 Mean Shannon: **less-washed 1.13, more-washed 2.76.**
 
@@ -79,18 +79,18 @@ generic warning:
 > `(1 | patient)` instead.
 
 Fitting that model, **the claim survives comfortably.** 16.1% of Shannon
-variance sits between participants, so the correlation is real — but the effect
-is large enough that modelling it changes nothing about the conclusion.
+variance sits between participants, so the correlation is real, but the effect
+is large enough that modeling it changes nothing about the conclusion.
 
 **This is the paper's central finding, and it reproduces.**
 
-### Beta diversity — the claim is not licensed
+### Beta diversity: the claim is not licensed
 
 | Test | Result |
 |---|---|
 | PERMANOVA, unstratified | R² = 0.2013, F = 76.86, p = 0.001 |
 | PERMANOVA, permuted within participant | R² = 0.2013, p = 0.001 |
-| **betadisper** | **p = 0.001 — dispersion is heterogeneous** |
+| **betadisper** | **p = 0.001, dispersion is heterogeneous** |
 
 The significance is not the problem: stratifying by participant leaves it
 unchanged, so the repeated-measures concern does not overturn this one.
@@ -98,28 +98,28 @@ unchanged, so the repeated-measures concern does not overturn this one.
 The dispersion check does. PERMANOVA responds to differences in *spread* as well
 as differences in *location*. When within-group dispersion differs significantly
 between groups, a significant PERMANOVA cannot be read as "the communities
-differ in composition" — the test cannot separate the two explanations.
+differ in composition", the test cannot separate the two explanations.
 
 The paper reports no dispersion check. MicroFitGut therefore records this claim
 as **unadjudicated rather than failed**: the reanalysis does not contradict it,
 it establishes that the evidence presented does not support it as stated. A
-different design — or a test robust to heteroscedasticity — could still
+different design, or a test robust to heteroscedasticity, could still
 vindicate it.
 
-### Differential abundance — the count holds, the identities do not
+### Differential abundance: the count holds, the identities do not
 
 ANCOM-BC2 at genus level with `(1 | patient)`: **11 robust hits of 80 tested**
 (16 before the sensitivity filter).
 
 The paper reported ten genera. **Eleven versus ten is agreement on count.**
 
-Agreement on identity is much weaker — **3 of 10 recovered (30%), Jaccard 0.176:**
+Agreement on identity is much weaker, **3 of 10 recovered (30%), Jaccard 0.176:**
 
 | | |
 |---|---|
 | **Recovered (3)** | *Staphylococcus*, *Streptococcus*, *Escherichia-Shigella* |
 | **Not recovered (7)** | *Lactobacillus*, *Bacillus*, *Micrococcus*, *Pseudomonas*, *Lawsonella*, *Acinetobacter*, *Enhydrobacter* |
-| **Never tested (1 of those 7)** | *Bacillus* — removed by the prevalence filter, so a filtering difference rather than a disagreement about significance |
+| **Never tested (1 of those 7)** | *Bacillus*, removed by the prevalence filter, so a filtering difference rather than a disagreement about significance |
 | **New in reanalysis (7)** | *Corynebacterium*, *Veillonella*, *Actinomyces*, *Haemophilus*, *Ferruginibacter*, *Reyranella*, SM1A02 |
 
 Two causes are clearly in play and the sweep separates them. The paper used
@@ -143,14 +143,14 @@ Claims that did not hold:
   - DA: only 30% of published taxa recovered (3 of 10)
 
 Claims NOT adjudicated:
-  ? beta-differs : dispersion heterogeneous — PERMANOVA does not license
+  ? beta-differs : dispersion heterogeneous: PERMANOVA does not license
                    a composition claim
 ```
 
 ### What this means
 
-The headline of the paper — that less-washed skin regions carry less diverse
-microbial communities — **holds**, and holds under a model that accounts for
+The headline of the paper, that less-washed skin regions carry less diverse
+microbial communities, **holds**, and holds under a model that accounts for
 participants contributing several samples each.
 
 The beta-diversity claim is **not contradicted but not supported as stated**. The
@@ -165,16 +165,16 @@ paper does not mention appear instead.
 None of this says the paper is wrong. It is a teaching paper reporting what
 students found with the tools they were given, and it says so. What the benchmark
 establishes is which of its conclusions are robust to defensible analytical
-choices and which depend on them — and that is a different, more useful question.
+choices and which depend on them, and that is a different, more useful question.
 
 ---
 
-## 4b. Sensitivity sweep — 16 configurations
+## 4b. Sensitivity sweep: 16 configurations
 
 The paper leaves 15 analytical parameters unstated or only inferable. The sweep
 varies them one at a time from the reconstruction baseline, so each axis's effect
 is isolated. **All 16 configurations executed**, including weighted and unweighted
-UniFrac — this dataset ships a phylogeny with 619 tips for 619 taxa, asserted as
+UniFrac, this dataset ships a phylogeny with 619 tips for 619 taxa, asserted as
 genuine via `mfg_mark_tree_real()` and recorded in the run log.
 
 | Run | Recovery | Significant genera |
@@ -198,7 +198,7 @@ Across defensible choices, recovery of the paper's genera ranges from **20% to
 
 | Metric | Dominant axis | Spread | Second | Ratio | Confidence |
 |---|---|---|---|---|---|
-| Significant genera | `da_method` | 41 | `prevalence_filter` (35) | 1.17 | **weak — not distinguishable** |
+| Significant genera | `da_method` | 41 | `prevalence_filter` (35) | 1.17 | **weak, not distinguishable** |
 | Recovery rate | `prevalence_filter` | 0.50 | `random_effects` (0.20) | 2.50 | **clear** |
 
 The tool names a cause for one metric and refuses for the other in the same run.
@@ -211,13 +211,13 @@ the prevalence filter dominates by a factor of 2.5 and is named.
 **The prevalence filter, not the statistics, drives most of the disagreement.**
 At the baseline filter of 0.10, three of the paper's ten genera are recovered. At
 no filter, **eight of ten are**. The genera that "failed to reproduce" were
-largely never tested — they are rare enough to be removed before any test ran.
+largely never tested, they are rare enough to be removed before any test ran.
 
 This is the `filtering.prevalence` signature in the discrepancy rubric exactly:
 *missed taxa turn out never to have been tested*. It is a different finding from
 a statistical disagreement, and a much less damaging one for the paper. The
 earlier section of this report, written from the baseline alone, understated
-this — which is precisely why the sweep exists.
+this, which is precisely why the sweep exists.
 
 **Modelling repeated measures costs the most of any single correction.** Adding
 `(1 | patient)` halves the significant genera, 19 → 9, and halves recovery,
@@ -226,7 +226,7 @@ direction as strongly as the filter moves them in the permissive direction.
 
 ### Configuration fragility
 
-The paper's count claim — approximately ten genera — **holds in 3 of 16
+The paper's count claim, approximately ten genera, **holds in 3 of 16
 defensible configurations (19%)**, and only under choices more conservative than
 the baseline: a participant random effect, Holm correction, or a strict
 prevalence filter.
@@ -256,7 +256,7 @@ found eight defects, all fixed. Every one biased results toward reporting
 
 Defects 1–6 are fixed in the shipped code. Defect 7 is a documented design
 difference, not a bug, but it is a trap and is noted here. Defect 8 is fixed:
-compound genus labels now normalise their separator.
+compound genus labels now normalize their separator.
 
 ---
 

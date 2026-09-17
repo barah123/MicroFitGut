@@ -7,9 +7,9 @@ in full. Study S1 of the validation matrix.
 |---|---|
 | **Paper** | Vogtmann E, Hua X, Zeller G, et al. Colorectal Cancer and the Human Gut Microbiome: Reproducibility with Whole-Genome Shotgun Sequencing. *PLOS ONE.* 2016;11(5):e0155362. |
 | **Raw data** | ENA [PRJEB12449](https://www.ebi.ac.uk/ena/data/view/PRJEB12449) |
-| **Analysed** | `curatedMetagenomicData` — `2021-03-31.VogtmannE_2016.relative_abundance`, `counts = TRUE` |
+| **Analyzed** | `curatedMetagenomicData`, `2021-03-31.VogtmannE_2016.relative_abundance`, `counts = TRUE` |
 | **Design** | Case-control: 52 CRC cases, 52 controls, Washington DC 1985–87, frequency matched on sex and BMI |
-| **Verdict** | **Reproduced** — 8 of 8 claims held |
+| **Verdict** | **Reproduced**: 8 of 8 claims held |
 
 ---
 
@@ -17,8 +17,8 @@ in full. Study S1 of the validation matrix.
 
 Vogtmann et al. is itself a reproducibility study. It asks whether associations
 found by 16S in a cohort are recovered when the same samples are sequenced by
-whole-genome shotgun. Most of its claims are therefore **negative** — "we did not
-reproduce X" — which makes it a sharper test of the benchmark machinery than a
+whole-genome shotgun. Most of its claims are therefore **negative**: "we did not
+reproduce X", which makes it a sharper test of the benchmark machinery than a
 conventional paper, because a negative claim can fail in both directions.
 
 It is also the first study run through MicroFitGut's shotgun path. **No shotgun
@@ -30,7 +30,7 @@ data had ever been processed by the tool before this run.**
 
 **12 fields stated, 0 inferred, 12 absent.**
 
-Unusually complete for stated fields — this is a methodologically careful paper
+Unusually complete for stated fields, this is a methodologically careful paper
 with a detailed statistics section. The twelve absent fields are downstream
 choices (prevalence filter, normalization for the comparison, FDR method,
 beta-diversity distance) that the paper had no occasion to state because it did
@@ -48,7 +48,7 @@ This is a genuine upstream divergence and the single most important qualificatio
 on everything below. The reanalysis does **not** reproduce the paper's pipeline;
 it reanalyses the same samples through a different taxonomic profiler. Per the
 discrepancy rubric this is closest to `taxonomy.database_version`, whose predicted
-signature is *detection rates differ while conclusions hold* — which is exactly
+signature is *detection rates differ while conclusions hold*, which is exactly
 what was observed.
 
 ---
@@ -57,13 +57,13 @@ what was observed.
 
 540 species × 110 samples on intake. Six samples carry no `study_condition` and
 were **excluded explicitly and logged** before analysis, leaving **52 CRC and 52
-control** — matching the paper exactly.
+control**: matching the paper exactly.
 
 Intake flagged:
 
 - Depth varies **34.6-fold** (4.1M to 141.9M reconstructed counts).
 - Sparsity **78.7%**.
-- **No repeated measures** — one sample per subject, 110 subjects. Confirms S1's
+- **No repeated measures**: one sample per subject, 110 subjects. Confirms S1's
   placement in the cross-sectional cell of the validation matrix.
 - Character columns take an alphabetical reference level unless set deliberately.
 
@@ -71,7 +71,7 @@ Intake flagged:
 
 ## 4. Results
 
-### 4.1 Alpha diversity — all three null results reproduce
+### 4.1 Alpha diversity: all three null results reproduce
 
 The paper reports no case-control difference on any of three indices.
 
@@ -86,7 +86,7 @@ not cross it. The paper's observation that "in general the controls had slightly
 higher alpha diversity" also holds for evenness (0.320 control vs 0.280 CRC),
 though not for Shannon.
 
-### 4.2 Presence/absence — every association reproduces, at half the detection
+### 4.2 Presence/absence: every association reproduces, at half the detection
 
 | Taxon | Paper: case % / control % / p | Reanalysis: case % / control % / p |
 |---|---|---|
@@ -95,7 +95,7 @@ though not for Shannon.
 | *Porphyromonas* | 61.5 / 40.4 / **0.032** | 28.8 / 5.8 / **0.004** |
 | *Atopobium* | 53.8 / 44.2 / 0.328 (ns) | 7.7 / 3.8 / 0.674 (ns) |
 
-Every conclusion holds — three significant associations in the same direction,
+Every conclusion holds, three significant associations in the same direction,
 one null result still null.
 
 **But detection rates are roughly halved.** Fusobacteria is detected in 76.9% of
@@ -107,12 +107,12 @@ interchangeable between profilers even though the case-control comparisons agree
 This matters beyond this study: **a paper reporting a prevalence figure is
 reporting a property of its profiler as much as of its cohort.**
 
-### 4.3 Relative abundance — both null results reproduce, closely
+### 4.3 Relative abundance: both null results reproduce, closely
 
 | Taxon | Paper (Wilcoxon) | Reanalysis |
 |---|---|---|
 | Clostridia (class) | 33.9% case / 39.0% control, p = 0.092 | 36.6% / 41.7%, **p = 0.079** |
-| Bacteroidia — highest abundance class | 53.2% case / 50.9% control | **50.7%, top class** |
+| Bacteroidia, highest abundance class | 53.2% case / 50.9% control | **50.7%, top class** |
 
 Clostridia reproduces to within 0.013 on the p-value and preserves the direction
 the paper noted ("tended to be lower in cases"). Bacteroidia is confirmed as the
@@ -156,15 +156,15 @@ manufacturing disagreement.
 
 Two, both fixed.
 
-### #9 — Unassigned samples were counted as a group
+### #9: Unassigned samples were counted as a group
 
 `validate_inputs()` computed group balance with `table(g, useNA = "ifany")`, so
 the six samples with no `study_condition` were treated as a third level:
 
-> Group sizes are unbalanced **8.7:1** — from 52 ÷ 6.
+> Group sizes are unbalanced **8.7:1**, which is 52 divided by 6.
 
 The design is **52 vs 52, perfectly balanced**. Two harms: a fabricated imbalance
-warning that would push an analyst toward an unnecessary correction, and — worse —
+warning that would push an analyst toward an unnecessary correction, and, worse, 
 the message that mattered was never issued at all. Samples with no group
 assignment are dropped silently by almost every test, changing *n* and the
 multiple-testing denominator without any record.
@@ -172,10 +172,10 @@ multiple-testing denominator without any record.
 Balance and minimum-size checks now run over observed levels only, and missing
 assignments raise their own warning naming the count and the consequence.
 
-### #10 — No way to encode "tested and not significant"
+### #10: No way to encode "tested and not significant"
 
 The claim schema had `da_direction` ("this taxon differs") and `da_count`
-("N taxa differ") but no type for **"this taxon was tested and did not differ"** —
+("N taxa differ") but no type for **"this taxon was tested and did not differ"**, 
 the commonest claim in a reproducibility study and two of this paper's eight.
 They could only be recorded as `unscored`, which correctly blocked a clean
 verdict but did so for the wrong reason: the evidence to settle them was present.
@@ -186,10 +186,10 @@ Added `da_null`, which distinguishes three states that matter:
 |---|---|
 | taxon tested, not significant | **held** |
 | taxon tested, significant | **failed** |
-| taxon absent from the result table | **not_evaluable** — absent is not the same as tested-and-null |
+| taxon absent from the result table | **not_evaluable**: absent is not the same as tested-and-null |
 
 With `da_null` in place, both claims scored `held` and the verdict moved from
-`incomplete` to `reproduced` — the correct answer, reached by encoding the
+`incomplete` to `reproduced`, the correct answer, reached by encoding the
 evidence rather than by relaxing a rule.
 
 ---
@@ -212,7 +212,7 @@ evidence rather than by relaxing a rule.
    interpretation, a sweep here would strengthen the reproduced verdict.
 5. **Reference phylogeny.** curatedMetagenomicData ships a tree of 10,430 tips
    for 540 taxa, and 8 rows were dropped for having no tree match. That tree is a
-   reference topology, not one estimated from these samples — MicroFitGut's tree
+   reference topology, not one estimated from these samples, MicroFitGut's tree
    guard asks "was this estimated from the sequence data?", which is the right
    question for 16S and unanswerable for shotgun species calls. No phylogenetic
    metric was computed here, so nothing depends on it, but the guard's semantics
@@ -227,7 +227,7 @@ library(curatedMetagenomicData)
 se <- curatedMetagenomicData("2021-03-31.VogtmannE_2016.relative_abundance",
                              dryrun = FALSE, counts = TRUE, rownames = "short")[[1]]
 
-# taxonomy comes from rowData, NOT from parsing rownames — "short" rownames are
+# taxonomy comes from rowData, NOT from parsing rownames: "short" rownames are
 # species names, not lineages
 rd  <- as.data.frame(SummarizedExperiment::rowData(se))
 tax <- as.matrix(rd[, c("superkingdom","phylum","class","order","family","genus","species")])

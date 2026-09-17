@@ -1,14 +1,14 @@
 # Benchmark: Kim et al. (2020), gut microbiome in pulmonary arterial hypertension
 
-Study **S4** of the validation matrix — the BIOM intake path, and the first study
+Study **S4** of the validation matrix, the BIOM intake path, and the first study
 to exercise a deposited file that is already normalized.
 
 | | |
 |---|---|
 | **Paper** | Kim S, Rigatto K, Gazzana MB, et al. Altered Gut Microbiome Profile in Patients With Pulmonary Arterial Hypertension. *Hypertension.* 2020;75(4):1063–1071. |
-| **Data** | Dryad [10.5061/dryad.stqjq2c03](https://doi.org/10.5061/dryad.stqjq2c03) — taxonomic BIOM, KEGG-orthology BIOM, QIIME metadata |
+| **Data** | Dryad [10.5061/dryad.stqjq2c03](https://doi.org/10.5061/dryad.stqjq2c03), taxonomic BIOM, KEGG-orthology BIOM, QIIME metadata |
 | **Design** | Case-control: PAH patients vs reference subjects, shotgun metagenomics |
-| **Verdict** | **Partially reproduced** — 5 of 9 claims held, 2 failed, 2 unadjudicated |
+| **Verdict** | **Partially reproduced**: 5 of 9 claims held, 2 failed, 2 unadjudicated |
 
 ---
 
@@ -17,7 +17,7 @@ to exercise a deposited file that is already normalized.
 S4 replaced an earlier candidate that proved to be a false positive: the corpus
 classifier had read "Bracken" in a filename as the Kraken2/Bracken tool when it
 was the author's surname. This study was chosen instead because it ships **two**
-BIOM files — a taxonomic table and a KEGG-orthology table — so it tests the BIOM
+BIOM files, a taxonomic table and a KEGG-orthology table, so it tests the BIOM
 parser and functional data in one study.
 
 ---
@@ -55,10 +55,10 @@ discrepancy, not a reanalysis failure.
 
 ## 3. Results
 
-Reanalysis used Wilcoxon rank-sum tests on the deposited relative abundances —
+Reanalysis used Wilcoxon rank-sum tests on the deposited relative abundances, 
 the only family the data supports.
 
-### 3.1 Named taxa — 4 of 6 directions hold, 2 reverse
+### 3.1 Named taxa: 4 of 6 directions hold, 2 reverse
 
 The paper states that six butyrate- and propionate-producing groups were
 "increased in reference cohort".
@@ -69,23 +69,23 @@ The paper states that six butyrate- and propionate-producing groups were
 | *Akkermansia* | 0.99% | 0.87% | reference | **0.009** | **held** |
 | *Bacteroides* | 23.41% | 18.71% | reference | 0.059 | **held** (direction) |
 | Lachnospiraceae | 15.25% | 11.54% | reference | 0.518 | **held** (direction) |
-| *Coprococcus* | 2.03% | 2.80% | **PAH** | 0.465 | **failed** — direction reversed |
-| *Eubacterium* | 17.77% | 18.08% | **PAH** | 0.662 | **failed** — direction reversed |
+| *Coprococcus* | 2.03% | 2.80% | **PAH** | 0.465 | **failed**: direction reversed |
+| *Eubacterium* | 17.77% | 18.08% | **PAH** | 0.662 | **failed**: direction reversed |
 
 Two of the six reverse direction. Neither reversal is significant, so the honest
 reading is that *Coprococcus* and *Eubacterium* show no difference in this
-reanalysis rather than an opposite one — but the paper's claim as written is that
+reanalysis rather than an opposite one, but the paper's claim as written is that
 they were increased in the reference cohort, and that does not hold.
 
 Only *Butyrivibrio* and *Akkermansia* reach significance. *Bacteroides* is
 marginal at 0.059.
 
-### 3.2 Beta diversity — the claim holds, and is licensed
+### 3.2 Beta diversity: the claim holds, and is licensed
 
 | Test | Result |
 |---|---|
 | PERMANOVA (Bray-Curtis) | R² = 0.0673, F = 2.019, **p = 0.004** |
-| **betadisper** | **p = 0.091 — dispersion homogeneous** |
+| **betadisper** | **p = 0.091, dispersion homogeneous** |
 
 This is the instructive contrast with A0 (Pérez-Losada), where a significant
 PERMANOVA was accompanied by heterogeneous dispersion and the composition claim
@@ -93,10 +93,10 @@ was therefore not licensed. Here dispersion is homogeneous, so the significant
 PERMANOVA **does** support "the microbial communities differ", and the claim is
 scored `held` rather than `unscored`.
 
-The effect is small — R² = 0.067 means group membership explains under 7% of
+The effect is small, R² = 0.067 means group membership explains under 7% of
 variation in community composition.
 
-### 3.3 Alpha diversity — not a claim, but worth recording
+### 3.3 Alpha diversity: not a claim, but worth recording
 
 Shannon diversity is significantly **lower** in PAH: median 2.572 vs 3.057,
 Welch t-test p = 0.004. The paper makes no alpha-diversity claim in its abstract,
@@ -121,12 +121,12 @@ Claims that did not hold:
   - eubacterium-control     : reanalysis finds it higher in PAH
 
 Claims NOT adjudicated:
-  ? random-forest  : 83% predictive accuracy — not re-fitted
-  ? virome         : Enterococcal/Lactococcal phage claims — no viral data deposited
+  ? random-forest  : 83% predictive accuracy: not re-fitted
+  ? virome         : Enterococcal/Lactococcal phage claims: no viral data deposited
 ```
 
 The two unadjudicated claims are honest gaps rather than schema limitations. The
-random-forest claim could be tested but was not; the virome claim **cannot** be —
+random-forest claim could be tested but was not; the virome claim **cannot** be, 
 the deposit contains no viral data, so a central claim of the paper is
 unverifiable from what was shared.
 
@@ -134,7 +134,7 @@ unverifiable from what was shared.
 
 ## 5. Defect this run exposed
 
-### #11 — QIIME-style BIOM taxonomy arrives in a single column
+### #11: QIIME-style BIOM taxonomy arrives in a single column
 
 `phyloseq::import_biom()` on this file returned a taxonomy table with **one
 column named `Rank1`**, holding the entire lineage as a string:
@@ -146,7 +146,7 @@ k__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Leuconostocaceae;g__W
 Everything downstream that works by rank then has nothing to work with.
 `tax_glom(ps, "Genus")` errors; matching a published genus name against the
 taxonomy finds nothing; `validate_inputs()` reports `ranks: Rank1`. Nothing
-crashes loudly — the analysis simply cannot proceed, and the reason is not
+crashes loudly, the analysis simply cannot proceed, and the reason is not
 obvious from the error.
 
 This is the commonest shape of deposited 16S and shotgun BIOM data, so it was
@@ -172,8 +172,8 @@ ship QIIME-style BIOMs and would have hit the same wall.
 2. **One reference subject missing** from the deposit relative to the paper's
    stated n = 31.
 3. **Functional (KEGG) claims not tested.** The KO BIOM was downloaded but the
-   paper's pathway claims — arginine, proline and ornithine synthesis, TMA/TMAO,
-   purine metabolism — require KO-to-pathway mapping that was not performed.
+   paper's pathway claims, arginine, proline and ornithine synthesis, TMA/TMAO,
+   purine metabolism, require KO-to-pathway mapping that was not performed.
 4. **Virome claims untestable.** No viral data in the deposit.
 5. **No sweep.** Single reconstruction; the prevalence filter and taxonomic level
    were not varied.

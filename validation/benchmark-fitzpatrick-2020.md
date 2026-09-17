@@ -1,14 +1,14 @@
 # Benchmark: Fitzpatrick & Schneider (2020), a parasitic plant and its host
 
-Study **A1** of the validation matrix — intended as the negative control, and
+Study **A1** of the validation matrix, intended as the negative control, and
 the first study to exercise the phylogenetic distance path on a real tree.
 
 | | |
 |---|---|
 | **Paper** | Fitzpatrick CR, Schneider AC. Unique bacterial assembly, composition, and interactions in a parasitic plant and its host. *J Exp Bot.* 2020;71(6):2198–2209. |
-| **Data** | Dryad [10.5061/dryad.7wm37pvnk](https://doi.org/10.5061/dryad.7wm37pvnk) — ASV table, RDP taxonomy, **phylogeny**, and the authors' analysis code |
+| **Data** | Dryad [10.5061/dryad.7wm37pvnk](https://doi.org/10.5061/dryad.7wm37pvnk), ASV table, RDP taxonomy, **phylogeny**, and the authors' analysis code |
 | **Design** | *Orobanche hederae* holoparasite and its *Hedera* host, 4 sites, leaf/root/soil, infected and uninfected patches |
-| **Verdict** | **Incomplete** — 2 claims held, 0 failed, 3 unadjudicated |
+| **Verdict** | **Incomplete**: 2 claims held, 0 failed, 3 unadjudicated |
 
 ---
 
@@ -19,13 +19,13 @@ design where no guard should fire. The validation plan flagged that designs were
 inferred from titles and file listings and warned they might not hold.
 
 They did not. A1 is a **paired infected/uninfected design across four sites with
-multiple tissue types per plant** — nine groups in total:
+multiple tissue types per plant**: nine groups in total:
 
 | | leaf | root | infected root | soil |
 |---|---|---|---|---|
-| **Parasite (P)** | 12 | 12 | — | — |
+| **Parasite (P)** | 12 | 12 |, |, |
 | **Infected host (I)** | 12 | 12 | 12 | 8 |
-| **Uninfected host (U)** | 12 | 12 | — | 7 |
+| **Uninfected host (U)** | 12 | 12 |, | 7 |
 
 Plus four technical controls (`mock`, `PAO1`, `water`, `Undetermined`), dropped
 and logged.
@@ -45,15 +45,15 @@ covering all 21,865 ASVs, which no earlier study in the series did.
 Minimum depth 1,000, prevalence 0.02: **21,865 → 9,488 taxa**, 99 samples.
 Depth range 28,701–261,684 (9.1-fold). Sparsity 94.0%.
 
-The tree was marked genuine (`mfg_mark_tree_real`) — `PPM_bac.tre` was built by
-the authors from these ASVs and its tips match the table exactly — which makes
+The tree was marked genuine (`mfg_mark_tree_real`), `PPM_bac.tre` was built by
+the authors from these ASVs and its tips match the table exactly, which makes
 UniFrac available.
 
 ---
 
 ## 3. Results
 
-### 3.1 Parasite roots are less diverse — strongly confirmed
+### 3.1 Parasite roots are less diverse: strongly confirmed
 
 | Index | Parasite root | Host root | Wilcoxon |
 |---|---|---|---|
@@ -69,7 +69,7 @@ P-L   62.0   P-R 392.5
 U-L   40.0   U-R 783.5   U-S 1263.0
 ```
 
-Soil is richest, leaves poorest, roots intermediate — and the parasite root sits
+Soil is richest, leaves poorest, roots intermediate, and the parasite root sits
 roughly half way between host roots and leaves, which is itself the shape of the
 paper's homogenisation argument.
 
@@ -79,8 +79,8 @@ Parasite root versus host root, same samples, same test:
 
 | Distance | R² | p | betadisper | Composition claim |
 |---|---|---|---|---|
-| Bray-Curtis | 0.2585 | 0.001 | **p = 0.018 — heterogeneous** | **not licensed** |
-| **UniFrac** | 0.1060 | 0.001 | p = 0.663 — homogeneous | **licensed** |
+| Bray-Curtis | 0.2585 | 0.001 | **p = 0.018, heterogeneous** | **not licensed** |
+| **UniFrac** | 0.1060 | 0.001 | p = 0.663, homogeneous | **licensed** |
 
 This is the most methodologically interesting result in the series so far. The
 two metrics agree that the groups differ. They disagree about whether that
@@ -110,13 +110,13 @@ Mean Bray-Curtis from parasite root:
 | soil (I-S) | 0.947 |
 
 Two of the paper's claims fall directly out of this. The parasite's root and leaf
-communities are far more alike than root communities are to each other — the
+communities are far more alike than root communities are to each other, the
 "increased homogenization between shoot and root tissues" claim, supported with a
 0.3 gap. And the parasite is closer to host root than to soil, supporting
 "congruency with *Hedera* root bacteria ... but not the surrounding soil".
 
 Both are recorded as `unscored`, because no claim type expresses *X resembles Y
-more than Z* — the same schema gap A3 raised.
+more than Z*, the same schema gap A3 raised.
 
 ---
 
@@ -142,26 +142,26 @@ ones are supported by evidence the schema cannot yet express.
 
 ## 5. Defects this run exposed
 
-### #14 — the clustering-variable candidate list was too narrow
+### #14: the clustering-variable candidate list was too narrow
 
 `mfg_detect_repeated_measures()` looked only for names matching
-`patient|subject|indiv|host|animal|mouse|id$`. A1 clusters by **site** — four
-sites, 24–25 samples each — and `site` was never considered, so the report said
+`patient|subject|indiv|host|animal|mouse|id$`. A1 clusters by **site**: four
+sites, 24–25 samples each, and `site` was never considered, so the report said
 nothing about it at all.
 
 Microbiome studies cluster by many names: site, plot, block, colony, nest, cage,
 tank, litter, family, pair in ecology; batch, run, plate in the lab. The list now
-covers these. The shape test from defect #13 still rejects `site` here — four
-levels holding 25 samples each is a blocking factor, not a subject — but the
+covers these. The shape test from defect #13 still rejects `site` here, four
+levels holding 25 samples each is a blocking factor, not a subject, but the
 rejection is now **reported** rather than absent:
 
 > Considered and rejected as subject identifiers: site (4 levels, up to 25
-> samples each — looks like a grouping factor).
+> samples each, looks like a grouping factor).
 
 Silence and "checked, and here is why not" are different things, and only the
 second is usable.
 
-### #15 — assigning metadata destroys the tracked normalization
+### #15: assigning metadata destroys the tracked normalization
 
 Subsetting a TSS-transformed object and adding a derived column produced:
 
@@ -179,7 +179,7 @@ Traced precisely:
 | **`sample_data(sub) <- sd`** | **`unknown`** |
 
 `mfg_set_normalization()` already documents this hazard and writes a registry
-backstop keyed on a content fingerprint — but subsetting *changes the content*,
+backstop keyed on a content fingerprint, but subsetting *changes the content*,
 so the fingerprint no longer matches and the backstop cannot fire. The guard
 against the failure was itself defeated by the subset.
 
@@ -189,7 +189,7 @@ subsetting step.
 
 This one is worth noting for a reason beyond the fix: the failure is *loud and
 wrong-looking*. It reports that normalization is untracked, which invites the
-user to assert a state — and asserting the wrong one would silently produce an
+user to assert a state, and asserting the wrong one would silently produce an
 invalid analysis. A guard that fails toward a plausible user error is more
 dangerous than one that fails toward a stop.
 
@@ -197,7 +197,7 @@ dangerous than one that fails toward a stop.
 
 ## 6. Limitations
 
-1. **Site clustering not modelled.** Four sites, ~25 samples each. Permuting
+1. **Site clustering not modeled.** Four sites, ~25 samples each. Permuting
    within site would be the correct treatment and would likely reduce R².
 2. **The paper's own analysis code ships with the deposit** (`PPM_Analysis_Code_Dryad.R`)
    and was not used. Comparing this reconstruction against it would separate
