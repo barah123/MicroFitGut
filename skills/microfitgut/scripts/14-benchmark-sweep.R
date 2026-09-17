@@ -127,9 +127,17 @@ study_field <- function(value = NULL, confidence = c("stated", "inferred", "abse
 #' beta            differs (TRUE/FALSE)
 #' unscored        text — explicitly not machine-checkable
 #'
-#' `unscored` is the escape valve, and it is the honest answer for a qualitative
-#' claim. What it must never do is disappear: an unscored claim blocks a clean
-#' "reproduced" verdict rather than being silently dropped.
+#' `unscored` is the escape valve, and it requires a `reason` naming WHY, because
+#' the reasons mean opposite things and must not be pooled. One of:
+#' schema_gap (no claim type expresses it; evidence may exist), out_of_scope
+#' (not a microbiome measurement, so it should not have been extracted),
+#' data_absent (never deposited), contrast_mismatch (cohort unreconstructible),
+#' not_attempted (the analyst did not run it, a protocol deviation), or
+#' pending_adjudication (qualitative but humanly decidable).
+#'
+#' The reason is an extraction decision. It is recorded before results are seen,
+#' not inferred afterwards, and `not_attempted` in particular is under the
+#' analyst's control and is therefore an outcome-selection channel.
 study_claim <- function(id, type = c("da_count", "da_direction", "da_null", "dominance",
                                      "alpha", "beta", "unscored"),
                         contrast = NULL, evidence = NULL, location = NULL, ...) {
@@ -142,7 +150,7 @@ study_claim <- function(id, type = c("da_count", "da_direction", "da_null", "dom
     dominance    = c("taxon", "group"),
     alpha        = c("direction"),
     beta         = c("differs"),
-    unscored     = c("text"))
+    unscored     = c("text", "reason"))
   missing <- setdiff(required, names(spec))
   if (length(missing)) {
     stop(sprintf("study_claim('%s', type = '%s') needs: %s", id, type,
@@ -733,9 +741,21 @@ attribution_record <- function(verdict, causes = list(),
                                confidence = c("high", "medium", "low"),
                                attribution = NULL, sweep_grid = NULL) {
   confidence <- match.arg(confidence)
-  valid_verdicts <- c("reproduced", "partially_reproduced", "diverged")
+  # Accepts either the primary claim's status (the endpoint) or the descriptive
+  # study category. The claim status is preferred: attribution explains why a
+  # specific claim did not survive, and the category is not an endpoint.
+  valid_verdicts <- c(MFG_CLAIM_SCORABLE,
+                      "reproduced", "partially_reproduced", "diverged")
+  if (verdict %in% MFG_CLAIM_UNSCORABLE) {
+    stop("verdict '", verdict, "' is unscorable, so there is no divergence to ",
+         "attribute. An unscorable claim is a finding about the deposit or the ",
+         "instrument, and it is reported as itself rather than explained away.",
+         call. = FALSE)
+  }
   if (!verdict %in% valid_verdicts) {
-    stop("verdict must be one of: ", paste(valid_verdicts, collapse = ", "),
+    stop("verdict must be a scorable claim status (",
+         paste(MFG_CLAIM_SCORABLE, collapse = ", "),
+         ") or a descriptive category (partially_reproduced, diverged).",
          call. = FALSE)
   }
   if (!identical(verdict, "reproduced") && is.null(unexplained_residual)) {

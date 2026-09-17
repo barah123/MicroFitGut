@@ -117,6 +117,23 @@ pm <- run_permanova(ps_tss, ~ region + wash, dist_obj = d,
   exchangeable when they are not. `run_permanova()` warns when repeated measures
   are detected and no strata is given.
 
+#### Stratification is not a repair for every clustered design
+
+`strata` permutes labels *within* a stratum, so it can only test a term that
+**varies within** that stratum. Two designs look identical in the metadata and
+are not:
+
+| Design | The term | What `strata` does |
+|---|---|---|
+| Paired, discordant twins: each pair has one case and one control | varies within pair | works, and removes the shared pair effect from the null |
+| One animal sampled repeatedly, species constant per animal | constant within animal | cannot test it at all; every permutation reproduces the observed labels and p = 1 by construction |
+
+`run_permanova()` **refuses** the second case rather than returning p = 1, which
+would read as a null result instead of an untestable one. When the grouping is
+between subjects, stratification is the wrong instrument: the honest report gives
+the number of independent subjects, not the number of samples, and the effective
+n is what limits the claim.
+
 ### betadisper — `check_dispersion()`
 
 Not optional. Reduces each sample to its distance from its group centroid and
@@ -132,6 +149,19 @@ PERMANOVA licenses you to say:
   distances to centroid.
 
 `plot_dispersion()` is the visual form and belongs alongside the ordination.
+
+**The null direction matters too.** A non-significant PERMANOVA under
+heterogeneous dispersion is not evidence of no difference: unequal spread masks a
+centroid shift as readily as it manufactures one. In benchmark mode both
+directions score as `not_licensed` rather than as a reproduced or contradicted
+claim (`14`).
+
+**The metric can decide whether a claim is licensed.** Bray-Curtis and Aitchison
+weight the abundant and the rare tail differently, so dispersion can be
+homogeneous under one and heterogeneous under the other on the same samples. The
+metric is therefore part of the claim, not a presentation choice, and it is fixed
+in the plan (stage 2) rather than selected after the dispersion test is seen.
+Report the metric in the same sentence as the result.
 
 ### ANOSIM — `run_anosim()`
 

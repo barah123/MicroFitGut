@@ -132,16 +132,87 @@ downstream disagreement comes from the statistical layer. Above ~0.3, the
 reanalysis is not reconstructing the published table, and **attributing downstream
 divergence to the statistical method would be wrong** — the cause is upstream.
 
-## The verdict — `concordance_verdict()`
+## Scoring claims — `score_claims()`
 
-Categorical, not a score:
+The concordance metrics above describe *how close* two analyses are. They do not
+say whether the paper's claim survived, and they must not be allowed to decide
+that. A recovery rate of 0.68 against a threshold of 0.7 is not a contradicted
+finding; it is a number near a line someone drew.
 
-| Verdict | Condition |
+So scoring runs on **claims**, one at a time, and every claim ends in exactly one
+status.
+
+### Four scorable statuses
+
+These, and only these, form the denominator of any reproduction rate.
+
+| Status | Meaning |
 |---|---|
-| `reproduced` | no conclusion flipped |
-| `partially_reproduced` | some claims held, others did not |
-| `diverged` | the central claims did not hold |
+| `reproduced` | the reanalysis supports the claim as stated |
+| `not_reproduced` | the reanalysis contradicts it |
+| `not_licensed` | the test ran, but its assumptions do not license the claim |
+| `not_tested` | the quantity was filtered out before testing |
 
-It also emits **qualifications** that are not flips but change the reading — for
-example an R² that changed by more than 50% while staying significant. The
+`not_licensed` is the one most easily lost. A significant PERMANOVA under
+heterogeneous dispersion is a real result about *something*, and it is not a
+composition claim. Pooling that with a missing metadata column throws away a
+finding about the paper.
+
+### Seven unscorable reasons
+
+These are reported with their own counts and are **never pooled**, because they
+mean different things about different objects.
+
+| Reason | What it is about |
+|---|---|
+| `schema_gap` | the instrument: no claim type expresses this |
+| `out_of_scope` | the paper: not a microbiome measurement |
+| `data_absent` | data sharing: the needed data was never deposited |
+| `contrast_mismatch` | the deposit: the paper's contrast cannot be built from it |
+| `not_attempted` | this run: the analysis was not done |
+| `pending_adjudication` | this run: awaiting a decision |
+
+A study whose claims are mostly `data_absent` and one whose claims are mostly
+`not_reproduced` are opposite findings. A single "unadjudicated" bucket makes
+them look alike.
+
+### The directional rule
+
+A directional claim is scored **significance first, then direction**. A
+non-significant result in the claimed direction is `not_reproduced`, because the
+paper asserted a difference and the reanalysis found none. Scoring on sign alone
+scores noise: an effect at p = 0.955 points somewhere, and that direction means
+nothing.
+
+Both sides are symmetric. A taxon absent from the reanalysis is `not_tested`
+whether the claim was positive or null, and `da_count` comparisons require an
+explicit `tolerance` whenever the comparator is approximate, since an unstated
+tolerance is a threshold chosen after seeing the number.
+
+## The endpoint — `concordance_verdict()`
+
+```r
+verdict <- concordance_verdict(claims = scored, primary_claim_id = "<id>")
+```
+
+`claims` is required. The domain concordance objects are accepted and **ignored**
+with a warning; they are descriptive, and a benchmark endpoint that moves when a
+recovery threshold moves is measuring the threshold.
+
+The outcome is **one pre-designated claim**, named before the reanalysis runs.
+The verdict object also carries:
+
+- `proportion_reproduced` over `n_scorable`, a secondary summary
+- `status_counts`, every status reported separately
+- `category`, one of `reproduced`, `partially_reproduced`, `diverged`
+
+The category is flagged `category_is_descriptive_only = TRUE` and is **not
+ordinal**. Three claims held of three is not twice as good as three of six when
+the other three were never deposited.
+
+It also emits **qualifications** that are not flips but change the reading, for
+example an R² that changed by more than half while staying significant. The
 conclusion reproduced; the effect size did not. Both belong in the report.
+
+An unhandled claim type is an error, not a skipped claim. A scorer that fails
+open turns a coverage gap into a silent pass.
