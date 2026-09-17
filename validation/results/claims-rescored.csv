@@ -1,0 +1,58 @@
+study_id,study,year,technology,claim_id,claim_type,claim_polarity,old_status,p_value,direction_agrees,dispersion,new_status,primary,note
+A0,Perez-Losada,2020,16S,alpha-higher-in-washed,alpha,difference,held,1e-16,TRUE,NA,reproduced,TRUE,LMM with (1|patient); effect +1.62 Shannon
+A0,Perez-Losada,2020,16S,ten-genera,da_count,difference,held,NA,TRUE,NA,reproduced,FALSE,paper approx 10; reanalysis 11; tolerance 3
+A0,Perez-Losada,2020,16S,beta-differs,beta,difference,unadjudicated,NA,TRUE,heterogeneous,not_licensed,FALSE,significant PERMANOVA under heterogeneous dispersion
+S1,Vogtmann,2016,Shotgun,alpha-shannon-ns,alpha,null,held,0.252,TRUE,NA,reproduced,FALSE,paper null; reanalysis null
+S1,Vogtmann,2016,Shotgun,alpha-richness-ns,alpha,null,held,0.157,TRUE,NA,reproduced,FALSE,paper null; reanalysis null
+S1,Vogtmann,2016,Shotgun,alpha-evenness-ns,alpha,null,held,0.438,TRUE,NA,reproduced,FALSE,paper null; reanalysis null
+S1,Vogtmann,2016,Shotgun,fusobacterium-cases,da,difference,held,0.017,TRUE,NA,reproduced,TRUE,higher in CRC through a different profiler
+S1,Vogtmann,2016,Shotgun,porphyromonas-cases,da,difference,held,0.004,TRUE,NA,reproduced,FALSE,higher in CRC
+S1,Vogtmann,2016,Shotgun,bacteroidia-dominant,dominance,difference,held,NA,TRUE,NA,reproduced,FALSE,top class Bacteroidia 50.7 pct
+S1,Vogtmann,2016,Shotgun,atopobium-null,da_null,null,held,0.674,TRUE,NA,reproduced,FALSE,paper null; reanalysis null
+S1,Vogtmann,2016,Shotgun,clostridia-null,da_null,null,held,0.092,TRUE,NA,reproduced,FALSE,paper null; reanalysis null
+S2,Feng,2015,Shotgun,richness-crc-above-control,alpha,difference,held,2e-07,TRUE,NA,reproduced,TRUE,omnibus across three stages
+S2,Feng,2015,Shotgun,fusobacterium-nucleatum-crc,da,difference,held,1.3e-07,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,gemella-morbillorum-crc,da,difference,held,1.1e-05,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,parvimonas-micra-crc,da,difference,held,3.8e-05,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,alistipes-putredinis-crc,da,difference,held,0.002,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,escherichia-coli-crc,da,difference,held,0.005,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,peptostreptococcus-stomatis-crc,da,difference,held,0.005,TRUE,NA,reproduced,FALSE,highest in carcinoma
+S2,Feng,2015,Shotgun,bilophila-wadsworthia-crc,da,difference,held,0.153,TRUE,NA,not_reproduced,FALSE,RESCORED: right direction but not significant
+S3,Kostic,2015,Shotgun,diversity-develops,alpha,difference,held,6.5e-04,TRUE,NA,reproduced,TRUE,diversity increases with infant age
+S3,Kostic,2015,Shotgun,alpha-drop-progressors,alpha,difference,unadjudicated,NA,NA,NA,contrast_mismatch,FALSE,claim is about seroconverters; deposit cannot identify them
+S3,Kostic,2015,Shotgun,strain-stable-within,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,strain-level claim; no claim type expresses it
+S3,Kostic,2015,Shotgun,pathways-constant,unscored,difference,unadjudicated,NA,NA,NA,not_attempted,FALSE,HUMAnN pathway data not downloaded
+S4,Kim,2020,Shotgun,butyrivibrio-control,da,difference,held,5.7e-05,TRUE,NA,reproduced,TRUE,higher in reference
+S4,Kim,2020,Shotgun,akkermansia-control,da,difference,held,0.009,TRUE,NA,reproduced,FALSE,higher in reference
+S4,Kim,2020,Shotgun,bacteroides-control,da,difference,held,0.059,TRUE,NA,not_reproduced,FALSE,RESCORED: right direction but not significant
+S4,Kim,2020,Shotgun,lachnospiraceae-control,da,difference,held,0.518,TRUE,NA,not_reproduced,FALSE,RESCORED: right direction but not significant
+S4,Kim,2020,Shotgun,beta-differs,beta,difference,held,0.004,TRUE,homogeneous,reproduced,FALSE,dispersion homogeneous so the claim is licensed
+S4,Kim,2020,Shotgun,coprococcus-control,da,difference,failed,0.465,FALSE,NA,not_reproduced,FALSE,direction reversed but no significant difference
+S4,Kim,2020,Shotgun,eubacterium-control,da,difference,failed,0.662,FALSE,NA,not_reproduced,FALSE,direction reversed but no significant difference
+S4,Kim,2020,Shotgun,random-forest,unscored,difference,unadjudicated,NA,NA,NA,not_attempted,FALSE,classifier not re-fitted
+S4,Kim,2020,Shotgun,virome,unscored,difference,unadjudicated,NA,NA,NA,data_absent,FALSE,no viral data deposited
+S5,Ramos,2024,Shotgun,no-distortion,beta_null,null,held,0.493,TRUE,homogeneous,reproduced,TRUE,paper claims no distortion; reanalysis agrees
+S5,Ramos,2024,Shotgun,lactobacillus-bps,da,difference,held,0.955,TRUE,NA,not_reproduced,FALSE,RESCORED: direction only; no univariate evidence
+S5,Ramos,2024,Shotgun,inter-animal-variation,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,qualitative; donor R2 0.676 is consistent
+S5,Ramos,2024,Shotgun,metabolite-profile,unscored,difference,unadjudicated,NA,NA,NA,out_of_scope,FALSE,metabolomics
+A1,Fitzpatrick,2020,16S,parasite-less-diverse,alpha,difference,held,1.9e-09,TRUE,NA,reproduced,TRUE,lower diversity under parasite
+A1,Fitzpatrick,2020,16S,parasite-distinct,beta,difference,held,0.001,TRUE,homogeneous,reproduced,FALSE,UniFrac; dispersion homogeneous
+A1,Fitzpatrick,2020,16S,shoot-root-homogenised,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,distance matrix supports it; no claim type
+A1,Fitzpatrick,2020,16S,congruent-root-not-soil,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,distance matrix supports it; no claim type
+A1,Fitzpatrick,2020,16S,fewer-coassociations,unscored,difference,unadjudicated,NA,NA,NA,not_attempted,FALSE,network not computed
+A2,Reed,2019,16S,upper-less-diverse,alpha,difference,held,6.2e-11,TRUE,NA,reproduced,TRUE,85.0 vs 272.5 features
+A2,Reed,2019,16S,upper-no-species-diff,beta_null,null,held,0.071,TRUE,homogeneous,reproduced,FALSE,paper null; reanalysis null; dispersion homogeneous
+A2,Reed,2019,16S,fox-higher-diversity,alpha,difference,failed,0.148,FALSE,NA,not_reproduced,FALSE,p 0.148 richness and 0.806 Shannon
+A2,Reed,2019,16S,lower-species-diff,beta,difference,unadjudicated,0.001,TRUE,heterogeneous,not_licensed,FALSE,significant but dispersion heterogeneous
+A2,Reed,2019,16S,aberts-more-stable,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,holds on direct test 0.426 vs 0.558; no claim type
+A2,Reed,2019,16S,fiber-degraders,unscored,difference,unadjudicated,NA,NA,NA,data_absent,FALSE,deposit carries no taxonomy
+A3,Lucas,2017,16S,lactobacillus-ants,da,difference,held,2.2e-07,TRUE,NA,reproduced,TRUE,33.5 pct in ant vs 1.2 pct in soil
+A3,Lucas,2017,16S,types-differ,beta,difference,unadjudicated,0.001,TRUE,heterogeneous,not_licensed,FALSE,betadisper p 0.027
+A3,Lucas,2017,16S,nest-like-soil,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,qualitative
+A3,Lucas,2017,16S,dimorphic-colonies,unscored,difference,unadjudicated,NA,NA,NA,schema_gap,FALSE,qualitative
+A4,Berer,2017,16S,humans-no-major-diff,beta_null,null,held,0.210,TRUE,homogeneous,reproduced,TRUE,R2 0.0153; permuted within twin pair
+A4,Berer,2017,16S,mice-differ,beta,difference,held,0.001,TRUE,homogeneous,reproduced,FALSE,R2 0.0571
+A4,Berer,2017,16S,sutterella-mice,da,difference,held,1.3e-05,TRUE,NA,reproduced,FALSE,higher in control-donor mice
+A4,Berer,2017,16S,akkermansia-untreated-ms,da,difference,unadjudicated,NA,NA,NA,contrast_mismatch,FALSE,deposit has no treatment column
+A4,Berer,2017,16S,autoimmunity-incidence,unscored,difference,unadjudicated,NA,NA,NA,out_of_scope,FALSE,mouse disease phenotype
+A4,Berer,2017,16S,il10,unscored,difference,unadjudicated,NA,NA,NA,out_of_scope,FALSE,immunological assay

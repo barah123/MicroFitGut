@@ -1,0 +1,8 @@
+"body","quantity","x","n","pct","ci_95_wilson"
+"A: course material (verification)","agreement with stated answer",90,98,91.8,"84.7-95.8"
+"A: course material (verification)","checks excluded as INFO",5,NA,NA,NA
+"A: course material (verification)","checks blocked by a guard",1,NA,NA,NA
+"A: course material (verification)","checks with no input data",2,NA,NA,NA
+"B: published papers (reproducibility)","primary claim reproduced",10,10,100,"72.2-100.0"
+"B: published papers (reproducibility)","scorable claims reproduced",30,40,75,"59.8-85.8"
+"B: published papers (reproducibility)","claims adjudicable",40,57,70.2,"57.3-80.5"
