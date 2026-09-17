@@ -1,0 +1,57 @@
+Palette validation record
+dataviz skill, scripts/validate_palette.js, surface #fcfcfb (light).
+Each set below is exactly the set of colours rendered in the figures.
+
+== Claim status, 4 slots: reproduced, not_reproduced, not_licensed, not_tested
+   #2a78d6 #eb6834 #4a3aa7 #1baf7a
+Palette (light, surface #fcfcfb, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43–0.77
+  [PASS] Chroma floor           all 4 >= 0.1
+  [PASS] CVD separation         worst all-pairs #1baf7a↔#eb6834 ΔE 9.2 (deutan) · tritan 9.6
+  [PASS] Normal-vision floor    worst all-pairs #4a3aa7↔#2a78d6 ΔE 16.3 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#1baf7a",2.74]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+
+== Claim status as rendered, 3 slots (not_tested has zero occurrences)
+   #2a78d6 #eb6834 #4a3aa7
+Palette (light, surface #fcfcfb, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #4a3aa7↔#2a78d6 ΔE 13.0 (deutan) · tritan 17.4
+  [PASS] Normal-vision floor    worst all-pairs #4a3aa7↔#2a78d6 ΔE 16.3 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+
+== Technology, 2 slots: 16S, Shotgun
+   #008300 #e87ba4
+Palette (light, surface #fcfcfb, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst adjacent #e87ba4↔#008300 ΔE 17.6 (protan) · tritan 31.7
+  [PASS] Normal-vision floor    worst adjacent #e87ba4↔#008300 ΔE 35.9 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#e87ba4",2.62]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+
+== Neutral ordinal ramp for the excluded classes
+   #4a4945 #7d7b76 #aeaca4
+Palette (light, surface #fcfcfb, ordinal ramp): 3 slots
+  [PASS] Lightness monotone     steps read light→dark
+  [PASS] Adjacent ΔL            all gaps >= 0.06
+  [PASS] Light-end contrast     #aeaca4 at 2.21:1 vs surface
+  [PASS] Single hue             hue spread 7°
+
+  → ALL CHECKS PASS  (ordinal: one hue, monotone L, visible step gaps, light end clears surface)
+
+== REJECTED: green/red traffic-light, every ordering
+   #008300 #e34948 #eda100 -> CVD 7.2, inside the 6-8 relief band
+Palette (light, surface #fcfcfb, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [WARN] CVD separation         worst all-pairs #e34948↔#008300 ΔE 7.2 (protan) · tritan 17.1
+  [PASS] Normal-vision floor    worst all-pairs #eda100↔#e34948 ΔE 20.8 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#eda100",2.11]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
