@@ -376,8 +376,11 @@ mfg_detect_repeated_measures <- function(meta, subject_candidates = NULL) {
     # independent are silently treated as if they were. The shape test below
     # still rejects the ones that are grouping factors, so widening the candidate
     # list costs nothing and makes the rejection visible instead of absent.
-    subject_candidates <- grep(paste0("patient|subject|indiv|host|animal|mouse|",
-                               "donor|participant|site|plot|block|colony|nest|",
+    # Match on stems, not whole words: real metadata abbreviates. "subj" was
+    # missed because the pattern demanded "subject", so a 5-animal design with
+    # 4 samples each reported no clustering at all.
+    subject_candidates <- grep(paste0("patient|subj|indiv|host|animal|mouse|",
+                               "donor|particip|site|plot|block|colony|nest|",
                                "cage|tank|litter|family|pair|batch|run|plate|",
                                "id$|_id$"),
                                names(meta), ignore.case = TRUE, value = TRUE)
