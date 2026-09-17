@@ -31,15 +31,56 @@ figures look publishable, and the answer is wrong. Rarefied counts get fed to
 DESeq2. UniFrac is computed on a placeholder tree. Five samples from the same
 participant are treated as five independent draws. A significant PERMANOVA is
 reported as a shift in community composition when the groups differ only in how
-variable they are.
+variable they are. Permutations are restricted within subject to handle repeated
+measures, on a term that never varies within a subject, and the test returns
+p = 1.000 because every permutation reproduces the observed labels.
 
-None of those error. All of them produce output you would put in a paper.
+None of those error. All of them produce output you would put in a paper, and the
+last one produces the most convincing null result available.
 
-MicroFitGut encodes the decisions that prevent them, and **refuses** the
-combinations that cause them. It was built against two Springer textbooks, a
-graduate course's demonstrations and problem sets, and a working Shiny dashboard,
-then validated by re-running that course's stated answers and explaining every
-difference.
+MicroFitGut encodes the decisions that prevent them and **refuses** the
+combinations that cause them. The normalization pairing check, the tree
+provenance gate, the repeated-measures refusal, the REML comparison block and the
+stratification test each stop an analysis that would otherwise return a clean and
+wrong number, and each says why. Across the sixteen scripts there are 72 points
+where an analysis stops rather than continuing on an invalid footing. A guard that
+refuses is doing its job, and the response is to change the analysis rather than
+the guard.
+
+### Two ways to run it
+
+**Analyze** takes a feature table and a question through eleven stages, from
+intake and validation to a rendered report, logging every threshold, exclusion
+and normalization state along the way.
+
+**Benchmark** takes a paper whose data is deposited. It extracts the paper's
+stated claims, reconstructs the analysis, and scores each claim against the
+reanalysis. Every claim lands in exactly one of ten statuses, and only four of
+them enter a denominator. The distinction matters: a claim that could not be
+tested because a covariate was never deposited is a different finding from one
+the reanalysis contradicts, and pooling them would hide both.
+
+### How it was built, and what that established
+
+The reference files and scripts are built from two Springer textbooks, a graduate
+course's demonstrations and problem sets, and a working Shiny dashboard. Two
+bodies of evidence test the result, and they are reported separately because they
+measure different things.
+
+Against the course material, where a correct answer is known, **28 of 34 exercise
+questions agree** with the stated answer. The six that differ trace to three
+documented causes, and replicating the course's own choices reproduces its
+numbers exactly.
+
+Against ten published studies, where no correct answer exists, **30 of 40 scorable
+claims reproduce** and 40 of 57 claims could be scored at all. Running those ten
+exposed twenty defects in MicroFitGut, every one found and fixed before any study
+was scored. The most useful result was not a rate. Adjudicability ranged from 25%
+to 100% across the ten, which is a finding about what gets deposited rather than
+about whether findings hold.
+
+Full numbers, figures and limitations are in
+[`validation/results/`](validation/results/).
 
 ---
 
