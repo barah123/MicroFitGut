@@ -271,14 +271,61 @@ run_permanova <- function(ps, formula, distance = "bray", dist_obj = NULL,
   # Warn when repeated measures are present and permutations are unconstrained.
   rm_det <- mfg_detect_repeated_measures(meta)
   if (isTRUE(rm_det$repeated) && is.null(strata)) {
-    warning(sprintf(paste("Repeated measures detected ('%s', up to %d samples per",
-      "level) but permutations are unconstrained. This treats within-subject",
-      "samples as exchangeable and inflates significance. Pass",
-      "strata = '%s' to permute within subject, and see reference/07."),
-      rm_det$subject_var, rm_det$max_per_subject, rm_det$subject_var), call. = FALSE)
+    # Only recommend strata when it would actually work. If the tested term is
+    # constant within subject, the refusal below would reject the very advice
+    # this warning gives, and contradictory guidance is worse than none.
+    sv <- rm_det$subject_var
+    testable_within <- any(vapply(all.vars(formula), function(v) {
+      if (!v %in% names(meta)) return(FALSE)
+      any(vapply(split(meta[[v]], as.factor(meta[[sv]])),
+                 function(z) length(unique(z[!is.na(z)])) > 1, logical(1)))
+    }, logical(1)))
+    msg <- if (testable_within) {
+      sprintf(paste("Repeated measures detected ('%s', up to %d samples per",
+        "level) but permutations are unconstrained. This treats within-subject",
+        "samples as exchangeable and inflates significance. Pass",
+        "strata = '%s' to permute within subject, and see reference/07."),
+        sv, rm_det$max_per_subject, sv)
+    } else {
+      sprintf(paste("Repeated measures detected ('%s', up to %d samples per",
+        "level), but the tested term does not vary within %s, so this is a",
+        "between-%s comparison and strata cannot help. Treat each %s as one",
+        "observation: the effective n is %d, not %d. See reference/07."),
+        sv, rm_det$max_per_subject, sv, sv, sv,
+        rm_det$n_subjects %||% length(unique(meta[[sv]])), nrow(meta))
+    }
+    warning(msg, call. = FALSE)
     mfg_log("beta", "permanova_strata_warning",
             list(subject_var = rm_det$subject_var,
                  note = "unconstrained permutations with repeated measures"))
+  }
+
+  # A term that never varies inside a stratum cannot be tested by permuting
+  # within strata: every permutation reproduces the observed assignment, so the
+  # p-value converges on 1 regardless of the effect. Found on a two-species
+  # design where each animal belongs to one species and strata was the animal,
+  # which returned p = 1.000 for a difference the data clearly contains. The
+  # failure is silent and reads as a strong null result, so it is refused.
+  if (!is.null(strata) && strata %in% names(meta)) {
+    blocks <- as.factor(meta[[strata]])
+    terms_ <- all.vars(formula)
+    constant <- terms_[vapply(terms_, function(v) {
+      if (!v %in% names(meta)) return(FALSE)
+      all(vapply(split(meta[[v]], blocks),
+                 function(z) length(unique(z[!is.na(z)])) <= 1, logical(1)))
+    }, logical(1))]
+    if (length(constant)) {
+      stop(sprintf(paste0(
+        "Cannot test %s with permutations restricted to '%s': %s does not vary ",
+        "within a single %s, so every permutation reproduces the observed ",
+        "assignment and the p-value is 1 by construction.\n",
+        "  This is a between-%s comparison, not a within-%s one. Either drop ",
+        "strata and treat %ss as the unit of replication, or test a term that ",
+        "does vary within %s."),
+        paste(constant, collapse = " and "), strata,
+        paste(constant, collapse = " and "), strata,
+        strata, strata, strata, strata), call. = FALSE)
+    }
   }
 
   set.seed(seed)

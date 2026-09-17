@@ -222,6 +222,76 @@ mfg_load <- function(path, meta = NULL, ...) {
 # ── Validation ───────────────────────────────────────────────────────────────
 
 #' The mandatory pre-analysis check.
+#' Read an HDF5 BIOM that phyloseq's import_biom() cannot open.
+#'
+#' `phyloseq::import_biom()` assumes a BIOM carries observation metadata. When
+#' the `/observation/metadata` group exists but holds no datasets, which is what
+#' QIIME 2 writes for a feature table exported without taxonomy, it fails with
+#'
+#'     length of 'dimnames' [2] not equal to array extent
+#'
+#' That message names neither the file nor the missing taxonomy, so the usual
+#' response is to suspect a corrupt download. The table itself is fine. This
+#' reader builds the object from the sparse matrix directly and attaches
+#' taxonomy and sample data only when they are actually present, so a table
+#' without taxonomy loads as a table without taxonomy rather than failing.
+#'
+#' Requires rhdf5. Returns a phyloseq object with whatever the file contains.
+mfg_read_biom_hdf5 <- function(path) {
+  if (!requireNamespace("rhdf5", quietly = TRUE)) {
+    stop("Reading an HDF5 BIOM needs rhdf5:\n",
+         "  BiocManager::install(\"rhdf5\")", call. = FALSE)
+  }
+  h5 <- function(x) rhdf5::h5read(path, x)
+  ls <- rhdf5::h5ls(path)
+  obs  <- as.character(h5("/observation/ids"))
+  samp <- as.character(h5("/sample/ids"))
+  # BIOM stores CSR by observation: indptr walks rows, indices give columns.
+  data    <- as.numeric(h5("/observation/matrix/data"))
+  indices <- as.integer(h5("/observation/matrix/indices"))
+  indptr  <- as.integer(h5("/observation/matrix/indptr"))
+  m <- matrix(0, nrow = length(obs), ncol = length(samp),
+              dimnames = list(obs, samp))
+  for (i in seq_along(obs)) {
+    lo <- indptr[i] + 1L; hi <- indptr[i + 1L]
+    if (hi >= lo) m[i, indices[lo:hi] + 1L] <- data[lo:hi]
+  }
+  parts <- list(phyloseq::otu_table(m, taxa_are_rows = TRUE))
+  has_tax  <- any(ls$group == "/observation/metadata" & ls$otype == "H5I_DATASET")
+  has_meta <- any(ls$group == "/sample/metadata"      & ls$otype == "H5I_DATASET")
+  if (has_tax) {
+    tx <- h5("/observation/metadata/taxonomy")
+    tm <- if (is.matrix(tx)) t(tx) else as.matrix(tx)
+    rownames(tm) <- obs
+    parts <- c(parts, list(phyloseq::tax_table(tm)))
+  }
+  if (has_meta) {
+    nm <- ls$name[ls$group == "/sample/metadata" & ls$otype == "H5I_DATASET"]
+    md <- as.data.frame(lapply(setNames(nm, nm),
+                               function(k) as.character(h5(paste0("/sample/metadata/", k)))),
+                        stringsAsFactors = FALSE)
+    rownames(md) <- samp
+    parts <- c(parts, list(phyloseq::sample_data(md)))
+  }
+  ps <- do.call(phyloseq::phyloseq, parts)
+  mfg_log("intake", "biom_hdf5_read", list(
+    file = basename(path), taxa = length(obs), samples = length(samp),
+    taxonomy = has_tax, sample_metadata = has_meta,
+    generated_by = tryCatch(as.character(rhdf5::h5readAttributes(path, "/")[["generated-by"]])[1],
+                            error = function(e) NA_character_)))
+  if (!has_tax) {
+    warning(sprintf(paste("%s carries no taxonomy. Feature IDs are all that",
+      "identify a row, so nothing can be agglomerated or matched by name.",
+      "Assign taxonomy upstream, or restrict the analysis to diversity and",
+      "ordination."), basename(path)), call. = FALSE)
+  }
+  if (!has_meta) {
+    warning(sprintf(paste("%s carries no sample metadata. Any grouping must",
+      "come from another source."), basename(path)), call. = FALSE)
+  }
+  ps
+}
+
 #' Split a single-column lineage into proper rank columns.
 #'
 #' `phyloseq::import_biom()` on a QIIME-style BIOM yields one column, usually

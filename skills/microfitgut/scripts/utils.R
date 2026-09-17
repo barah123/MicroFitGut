@@ -163,8 +163,16 @@ mfg_prune_taxa <- function(keep, ps) {
 #' next analysis refuses an object that was correctly normalized two lines
 #' earlier. Found adding a derived column to a subset of a TSS-transformed table.
 mfg_set_meta <- function(ps, md) {
-  out <- ps
-  phyloseq::sample_data(out) <- phyloseq::sample_data(as.data.frame(md))
+  sd <- phyloseq::sample_data(as.data.frame(md))
+  # phyloseq() given a single component returns THAT COMPONENT, not a phyloseq
+  # object, so a table with no taxonomy and no metadata arrives here as a bare
+  # otu_table and `sample_data(x) <- ` fails with "no slot of name otu_table".
+  # Construct in that case rather than assign.
+  out <- if (methods::is(ps, "phyloseq")) {
+    o <- ps; phyloseq::sample_data(o) <- sd; o
+  } else {
+    phyloseq::phyloseq(ps, sd)
+  }
   mfg_carry_attrs(out, ps)
 }
 
