@@ -63,7 +63,7 @@ the reanalysis contradicts, and pooling them would hide both.
 ### How it was built, and what that established
 
 The reference files and scripts are built from two Springer textbooks, a graduate
-course's demonstrations and problem sets, and a working Shiny dashboard. Two
+course's demonstrations and problem sets, and canislupus2.0. Two
 bodies of evidence test the result, and they are reported separately because they
 measure different things.
 
@@ -75,7 +75,7 @@ numbers exactly.
 Against ten published studies, where no correct answer exists, **30 of 40 scorable
 claims reproduce** and 40 of 57 claims could be scored at all. Running those ten
 exposed twenty defects in MicroFitGut, every one found and fixed before any study
-was scored. The most useful result was not a rate. Adjudicability ranged from 25%
+was scored. Adjudicability ranged from 25%
 to 100% across the ten, which is a finding about what gets deposited rather than
 about whether findings hold.
 
