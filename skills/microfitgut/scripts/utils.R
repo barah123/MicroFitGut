@@ -136,6 +136,45 @@ mfg_carry_attrs <- function(to, from) {
   to
 }
 
+#' Subset samples or taxa without losing MicroFitGut's tracked state.
+#'
+#' Every QC function in 02-qc.R routes through mfg_carry_attrs(), but a direct
+#' phyloseq::prune_samples() or subset_samples() call does not: the returned
+#' object is rebuilt and the normalization marker and tree provenance go with it.
+#' The next analysis then reports "normalization is not tracked (inferred:
+#' unknown)" and refuses — on an object that WAS correctly normalized a line
+#' earlier. Found when subsetting a TSS-transformed object down to root samples.
+#'
+#' Use these in place of the phyloseq calls whenever the object is mid-pipeline.
+mfg_prune_samples <- function(keep, ps) {
+  mfg_carry_attrs(phyloseq::prune_samples(keep, ps), ps)
+}
+
+mfg_prune_taxa <- function(keep, ps) {
+  mfg_carry_attrs(phyloseq::prune_taxa(keep, ps), ps)
+}
+
+#' Write metadata back onto an object without losing tracked state.
+#'
+#' `sample_data(ps) <- ...` rebuilds the object and drops MicroFitGut's
+#' attributes. mfg_set_normalization() records a registry backstop keyed on a
+#' content fingerprint for exactly this reason, but the fingerprint changes when
+#' the object has been subset — so subset-then-assign loses the state and the
+#' next analysis refuses an object that was correctly normalized two lines
+#' earlier. Found adding a derived column to a subset of a TSS-transformed table.
+mfg_set_meta <- function(ps, md) {
+  out <- ps
+  phyloseq::sample_data(out) <- phyloseq::sample_data(as.data.frame(md))
+  mfg_carry_attrs(out, ps)
+}
+
+#' Add or replace one metadata column, carrying state.
+mfg_add_meta <- function(ps, name, value) {
+  md <- mfg_meta(ps)
+  md[[name]] <- value
+  mfg_set_meta(ps, md)
+}
+
 #' Metadata as a genuine base data.frame.
 #'
 #' as.data.frame() on a phyloseq sample_data returns an object still carrying the
@@ -331,7 +370,16 @@ mfg_detect_repeated_measures <- function(meta, subject_candidates = NULL) {
   # its shape is unusual rather than accepting it silently.
   explicit <- !is.null(subject_candidates)
   if (is.null(subject_candidates)) {
-    subject_candidates <- grep("patient|subject|indiv|host|animal|mouse|id$|_id$",
+    # Clustering in microbiome studies is not always called "subject". Ecology
+    # clusters by site, plot, block, colony, nest, cage, tank or litter; lab work
+    # clusters by batch, run or plate. Missing these means samples that are not
+    # independent are silently treated as if they were. The shape test below
+    # still rejects the ones that are grouping factors, so widening the candidate
+    # list costs nothing and makes the rejection visible instead of absent.
+    subject_candidates <- grep(paste0("patient|subject|indiv|host|animal|mouse|",
+                               "donor|participant|site|plot|block|colony|nest|",
+                               "cage|tank|litter|family|pair|batch|run|plate|",
+                               "id$|_id$"),
                                names(meta), ignore.case = TRUE, value = TRUE)
   }
   subject_candidates <- intersect(subject_candidates, names(meta))
