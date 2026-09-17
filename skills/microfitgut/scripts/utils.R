@@ -325,23 +325,53 @@ is_complete_block_design <- function(group, block) {
 #' the single most common error the statistician subagent catches, so this is
 #' checked explicitly rather than left to inspection.
 mfg_detect_repeated_measures <- function(meta, subject_candidates = NULL) {
+  # Record this BEFORE the argument is reassigned below: R's missing() stops
+  # reporting the original state once the formal has been written to.
+  # A caller who names a variable means it: honour the choice, but say so when
+  # its shape is unusual rather than accepting it silently.
+  explicit <- !is.null(subject_candidates)
   if (is.null(subject_candidates)) {
     subject_candidates <- grep("patient|subject|indiv|host|animal|mouse|id$|_id$",
                                names(meta), ignore.case = TRUE, value = TRUE)
   }
   subject_candidates <- intersect(subject_candidates, names(meta))
   out <- list(repeated = FALSE, subject_var = NULL, max_per_subject = 1L,
-              candidates = subject_candidates)
+              candidates = subject_candidates, rejected = character(0))
   for (v in subject_candidates) {
     tab <- table(meta[[v]])
     # A variable that is unique per row is a sample name, not a subject.
-    if (length(tab) >= 2 && max(tab) >= 2 && length(tab) < nrow(meta)) {
-      out$repeated        <- TRUE
-      out$subject_var     <- v
-      out$max_per_subject <- as.integer(max(tab))
-      out$n_subjects      <- length(tab)
-      break
+    if (!(length(tab) >= 2 && max(tab) >= 2 && length(tab) < nrow(meta))) next
+    # A subject variable partitions samples into MANY SMALL clusters; a grouping
+    # factor partitions them into FEW LARGE ones. If one "subject" contributed
+    # more samples than there are subjects, it is a factor — sample type, site,
+    # treatment — and fitting (1 | that) models the group effect as noise.
+    # Caught on a 4-level `host` column over 72 samples that named the sample
+    # type, not an organism that was sampled repeatedly.
+    if (length(tab) <= max(tab)) {
+      if (!explicit) {
+        out$rejected <- c(out$rejected, sprintf(
+          "%s (%d levels, up to %d samples each - looks like a grouping factor)",
+          v, length(tab), max(tab)))
+        next
+      }
+      warning(sprintf(paste("'%s' was given as the subject variable but has only",
+        "%d levels with up to %d samples each, which is the shape of a grouping",
+        "factor rather than a subject identifier. Using it as instructed; check",
+        "that it is not the study's group variable."), v, length(tab), max(tab)),
+        call. = FALSE)
     }
+    out$repeated        <- TRUE
+    out$subject_var     <- v
+    out$max_per_subject <- as.integer(max(tab))
+    out$n_subjects      <- length(tab)
+    break
+  }
+  # Say what was considered and set aside, so a real subject variable that looks
+  # factor-shaped is not silently ignored.
+  if (!out$repeated && length(out$rejected)) {
+    out$note <- paste0("Considered and rejected as subject identifiers: ",
+                       paste(out$rejected, collapse = "; "),
+                       ". Pass subject_var explicitly to override.")
   }
   out
 }

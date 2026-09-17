@@ -222,6 +222,68 @@ mfg_load <- function(path, meta = NULL, ...) {
 # ── Validation ───────────────────────────────────────────────────────────────
 
 #' The mandatory pre-analysis check.
+#' Split a single-column lineage into proper rank columns.
+#'
+#' `phyloseq::import_biom()` on a QIIME-style BIOM yields one column, usually
+#' named Rank1, holding the whole lineage as `k__Bacteria;p__Firmicutes;...`.
+#' Everything downstream that agglomerates, filters or matches taxa by rank sees
+#' a taxonomy table with no ranks in it and silently has nothing to work with —
+#' `tax_glom(ps, "Genus")` errors, and taxon matching against a published genus
+#' name finds nothing. This is the commonest shape of deposited 16S data, so it
+#' is handled rather than left to the caller.
+#'
+#' Accepts `;` or `|` separators and `k__`/`d__` prefixes, and pads short
+#' lineages with NA rather than recycling, so a lineage that stops at Family does
+#' not acquire a fabricated Genus.
+mfg_split_lineage <- function(ps, sep = NULL, ranks = TAX_RANKS) {
+  tt <- phyloseq::tax_table(ps, errorIfNULL = FALSE)
+  if (is.null(tt)) stop("No taxonomy table to split.", call. = FALSE)
+  m <- as(tt, "matrix")
+  if (ncol(m) > 1) {
+    # Already split, but import_biom names the columns Rank1..Rank7 rather than
+    # Kingdom..Species. Same practical failure as an unsplit lineage: there is no
+    # "Genus" column, so tax_glom(ps, "Genus") errors and taxon matching by rank
+    # finds nothing. Rename when the count matches the rank schema; leave alone
+    # when it does not, since guessing an alignment would be worse than failing.
+    if (all(grepl("^Rank[0-9]+$", colnames(m))) && ncol(m) == length(ranks)) {
+      old <- colnames(m)
+      colnames(m) <- ranks
+      m[] <- sub("^[dkpcofgst]__", "", trimws(m))
+      m[!nzchar(m) | m %in% c("NA", "unidentified")] <- NA_character_
+      phyloseq::tax_table(ps) <- phyloseq::tax_table(m)
+      mfg_log("intake", "ranks_renamed", list(
+        from = paste(old, collapse = ","), to = paste(ranks, collapse = ","),
+        resolved_to_genus = sum(!is.na(m[, "Genus"]))))
+      message("Renamed ", paste(old, collapse = "/"), " to ",
+              paste(ranks, collapse = "/"), ".")
+      return(ps)
+    }
+    message("Taxonomy already has ", ncol(m), " columns; nothing to split.")
+    return(ps)
+  }
+  lin <- as.character(m[, 1])
+  if (is.null(sep)) {
+    sep <- if (mean(grepl(";", lin, fixed = TRUE)) >= mean(grepl("|", lin, fixed = TRUE))) ";" else "|"
+  }
+  parts <- strsplit(lin, sep, fixed = TRUE)
+  n <- length(ranks)
+  out <- t(vapply(parts, function(p) {
+    p <- trimws(sub("^[dkpcofgst]__", "", trimws(p)))
+    p[!nzchar(p)] <- NA_character_
+    length(p) <- n                      # pads with NA, never recycles
+    p
+  }, character(n)))
+  colnames(out) <- ranks
+  rownames(out) <- rownames(m)
+  phyloseq::tax_table(ps) <- phyloseq::tax_table(out)
+  mfg_log("intake", "lineage_split", list(
+    sep = sep, ranks = paste(ranks, collapse = ","),
+    n_taxa = nrow(out),
+    resolved_to_genus = sum(!is.na(out[, "Genus"])),
+    resolved_to_species = sum(!is.na(out[, "Species"]))))
+  ps
+}
+
 #'
 #' Returns a structured report and, unless `strict = FALSE`, stops on anything
 #' that would invalidate a downstream result. Nothing in MicroFitGut runs before
