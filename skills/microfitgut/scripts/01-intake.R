@@ -15,6 +15,94 @@
 # Requires: mfg_require(c("intake"))  and utils.R
 # =============================================================================
 
+# ── Which dataset is the one to analyse ──────────────────────────────────────
+#
+# A data directory rarely holds one dataset. It holds a full study object, two
+# teaching subsets, a triplet that is a third subset, and last month's rerun.
+# Every one of them loads without complaint and every one gives a different
+# answer, so the choice between them is an analytical decision and gets recorded
+# as one.
+
+MFG_DATASET_PATTERNS <- c(
+  "\\.rds$", "\\.biom$", "\\.qza$", "\\.tsv$", "\\.txt$", "\\.csv$"
+)
+
+#' Inventory the candidate inputs in a directory before choosing one.
+#'
+#' Returns every file that could be a microbiome input, with the size and
+#' modification time that usually distinguish a full study from a subset. This
+#' does not choose; it makes the choice visible so that it has to be made.
+mfg_input_inventory <- function(dir = "data", recursive = TRUE) {
+  if (!dir.exists(dir)) stop("Not a directory: ", dir, call. = FALSE)
+
+  files <- list.files(dir, recursive = recursive, full.names = TRUE)
+  files <- files[file.exists(files) & !dir.exists(files)]
+  keep  <- Reduce(`|`, lapply(MFG_DATASET_PATTERNS, function(p)
+    grepl(p, files, ignore.case = TRUE)), init = rep(FALSE, length(files)))
+  files <- files[keep]
+
+  if (!length(files)) {
+    mfg_log("intake", "inputs_inventoried", list(dir = dir, n_files = 0))
+    message("No candidate microbiome inputs found under ", dir, ".")
+    return(invisible(data.frame()))
+  }
+
+  info <- file.info(files)
+  inv <- data.frame(
+    file     = basename(files),
+    path     = files,
+    format   = tolower(tools::file_ext(files)),
+    bytes    = as.numeric(info$size),
+    modified = format(info$mtime, "%Y-%m-%d %H:%M:%S"),
+    stringsAsFactors = FALSE
+  )
+  inv <- inv[order(-inv$bytes), ]
+  rownames(inv) <- NULL
+
+  # A self-contained object is a candidate dataset on its own. A .csv is usually
+  # one third of a triplet, so it is listed but not counted as a rival dataset.
+  standalone <- sum(inv$format %in% c("rds", "biom", "qza"))
+  MFG_LOG$sources$inventory  <- inv
+  MFG_LOG$sources$standalone <- standalone
+
+  mfg_log("intake", "inputs_inventoried",
+          list(dir = dir, n_files = nrow(inv), n_standalone = standalone))
+
+  if (standalone > 1) {
+    message("\n", standalone, " self-contained datasets found under ", dir,
+            ". They will give different answers.\n",
+            "Call mfg_declare_authoritative(<path>, reason = \"...\") ",
+            "before loading, or the report will record the choice as ",
+            "undocumented.\n")
+  }
+  inv
+}
+
+#' Record which input is the authoritative one, and why.
+#'
+#' The reason is required and is quoted in the report. "It was the largest file"
+#' is a reason; an undocumented pick between four files is not.
+mfg_declare_authoritative <- function(path, reason) {
+  if (missing(reason) || !is.character(reason) || !nzchar(trimws(reason))) {
+    stop("mfg_declare_authoritative() needs a reason. Name what makes this file ",
+         "the right one: the study it covers, the version, the documentation ",
+         "that says so.", call. = FALSE)
+  }
+  if (!file.exists(path)) stop("File not found: ", path, call. = FALSE)
+
+  MFG_LOG$sources$authoritative <- list(
+    path = normalizePath(path, mustWork = FALSE),
+    file = basename(path),
+    reason = trimws(reason)
+  )
+  mfg_log("intake", "authoritative_source_declared",
+          list(file = basename(path), reason = trimws(reason)))
+  invisible(MFG_LOG$sources$authoritative)
+}
+
+#' What was declared, or NULL. Read by assemble_summary() and the report.
+mfg_authoritative_source <- function() MFG_LOG$sources$authoritative
+
 # ── Reading a delimited table ────────────────────────────────────────────────
 
 #' Read a table whose first column holds row names, whatever the delimiter.
@@ -100,6 +188,12 @@ build_phyloseq <- function(abund, tax = NULL, meta = NULL,
                            tree = NULL, seqs = NULL,
                            taxa_are_rows = NULL, tree_is_real = NULL) {
 
+  # Record the paths before reading turns them into data frames and the file
+  # they came from is no longer recoverable from the object.
+  for (p in list(abund, tax, meta, tree, seqs)) {
+    if (is.character(p) && length(p) == 1 && file.exists(p)) mfg_record_input(p, "raw")
+  }
+
   if (is.character(abund)) abund <- mfg_read_table(abund)
   if (is.character(tax) && length(tax) == 1)  tax  <- mfg_read_table(tax)
   if (is.character(meta) && length(meta) == 1) meta <- mfg_read_table(meta)
@@ -164,6 +258,12 @@ build_phyloseq <- function(abund, tax = NULL, meta = NULL,
 #' metadata, and records that the values are relative abundances when they are —
 #' which blocks rarefaction and the count-based richness estimators downstream.
 build_phyloseq_from_profile <- function(profile_path, meta = NULL, lineage_col = NULL) {
+  # A taxonomic profile has already been through classification and summarisation,
+  # so it is processed input however it is labelled upstream.
+  mfg_record_input(profile_path, "processed")
+  if (is.character(meta) && length(meta) == 1 && file.exists(meta)) {
+    mfg_record_input(meta, "raw")
+  }
   df  <- read_profile_file(profile_path)
   pp  <- parse_taxonomic_profile(df, lineage_col = lineage_col)
 
@@ -194,6 +294,11 @@ build_phyloseq_from_profile <- function(profile_path, meta = NULL, lineage_col =
 #' reference/08 — but composition, DA and ordination all work unchanged.
 build_phyloseq_functional <- function(abund_path, pathway_tax_path, meta = NULL,
                                       skip = 1) {
+  mfg_record_input(abund_path, "processed")
+  mfg_record_input(pathway_tax_path, "raw")
+  if (is.character(meta) && length(meta) == 1 && file.exists(meta)) {
+    mfg_record_input(meta, "raw")
+  }
   otu  <- utils::read.delim(abund_path, skip = skip, row.names = 1,
                             check.names = FALSE, stringsAsFactors = FALSE)
   taxa <- utils::read.delim(pathway_tax_path, row.names = 1,
@@ -228,6 +333,10 @@ mfg_load <- function(path, meta = NULL, ...) {
     if (!methods::is(ps, "phyloseq")) {
       stop(path, " holds a ", class(ps)[1], ", not a phyloseq object.", call. = FALSE)
     }
+    # A saved phyloseq object has been built, and usually filtered, by whoever
+    # saved it. Calling it raw would misdescribe it.
+    mfg_record_input(path, "processed", taxa = phyloseq::ntaxa(ps),
+                     samples = phyloseq::nsamples(ps))
     mfg_log("intake", "rds_loaded",
             list(file = basename(path), taxa = phyloseq::ntaxa(ps),
                  samples = phyloseq::nsamples(ps)))
@@ -235,6 +344,8 @@ mfg_load <- function(path, meta = NULL, ...) {
   }
   if (ext %in% c("biom")) {
     ps <- phyloseq::import_biom(path, ...)
+    mfg_record_input(path, "processed", taxa = phyloseq::ntaxa(ps),
+                     samples = phyloseq::nsamples(ps))
     mfg_log("intake", "biom_loaded",
             list(file = basename(path), taxa = phyloseq::ntaxa(ps),
                  samples = phyloseq::nsamples(ps)))

@@ -84,6 +84,28 @@ all of them.
 
 ### 1. Intake — `reference/01`
 
+**Inventory before loading.** A data directory rarely holds one dataset.
+
+```r
+inv <- mfg_input_inventory("data"); print(inv)
+```
+
+If it reports more than one self-contained dataset, say which one you are
+analysing and why, in the response, and record it:
+
+```r
+mfg_declare_authoritative("data/study.RDS",
+  reason = "the full study: 344 samples with tree and 12 metadata variables; ps9/ps10/ps12 are teaching subsets")
+```
+
+The reason is required, it is quoted in the methods, and `assemble_summary()`
+lists `authoritative_source` as missing content if several datasets were present
+and none was declared. Two files of identical size with different names are the
+case this exists for.
+
+Then load. Every loader records the file's path, format, size, modification time
+and MD5 checksum, so the report can name the exact file version analysed.
+
 ```r
 ps <- mfg_load("data/study.RDS")
 # or build_phyloseq(abund, tax, meta, tree, seqs, tree_is_real = TRUE)
@@ -223,6 +245,13 @@ mfg_manifest()
 `assemble_summary()` lists any mandatory content that is missing. Section 7 of the
 rendered report is "Incomplete reporting" — its presence in a finished report is a
 failure, not a disclosure.
+
+`mfg_manifest()` also writes `analysis_calls.R`: every MicroFitGut call the run
+made, in order, with the arguments as they were passed, reconstructed from the
+log rather than transcribed. It is a record, not a runnable script — assignments
+are not captured, because R cannot see from inside a function what its result was
+bound to. Read it before the report is final. A call you expected and cannot find
+there is a step that did not log, and a step that did not log cannot be reported.
 
 ---
 

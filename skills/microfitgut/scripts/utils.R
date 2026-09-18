@@ -22,6 +22,8 @@ TAX_RANKS <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Specie
 MFG_LOG <- new.env(parent = emptyenv())
 MFG_LOG$entries <- list()
 MFG_LOG$run_id  <- NULL
+MFG_LOG$inputs  <- list()   # one record per input file read, see mfg_record_input()
+MFG_LOG$sources <- list()   # candidate-dataset inventory and the authoritative choice
 
 #' Start a run and fix its identifier.
 #'
@@ -31,6 +33,8 @@ mfg_start_run <- function(label = "analysis", outdir = "output") {
   stamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
   MFG_LOG$run_id  <- paste0(label, "-", stamp)
   MFG_LOG$entries <- list()
+  MFG_LOG$inputs  <- list()
+  MFG_LOG$sources <- list()
   MFG_LOG$outdir  <- outdir
   dir.create(file.path(outdir, MFG_LOG$run_id), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(outdir, MFG_LOG$run_id, "figures"), showWarnings = FALSE)
@@ -51,10 +55,21 @@ mfg_run_dir <- function(sub = NULL) {
 }
 
 #' Append one structured record to the run log.
+#'
+#' The entry also carries the call that produced it. `sys.call(1)` is the
+#' outermost frame on the stack, so an event logged from deep inside run_qc()
+#' still records `run_qc(...)` as the user typed it, not the private helper. At
+#' top level there is no frame 1 and the call is NA. mfg_write_analysis_script()
+#' reads these back; run_log.csv keeps its four columns unchanged, because the
+#' subagents' greps are built on that shape.
 mfg_log <- function(stage, event, detail = list()) {
+  caller <- tryCatch(if (sys.nframe() > 1L) sys.call(1L) else NULL,
+                     error = function(e) NULL)
   MFG_LOG$entries[[length(MFG_LOG$entries) + 1]] <- list(
     stage = stage, event = event,
     time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    call = if (is.null(caller)) NA_character_
+           else paste(deparse(caller, width.cutoff = 500L), collapse = " "),
     detail = detail
   )
   invisible(TRUE)
@@ -74,6 +89,70 @@ mfg_write_log <- function() {
 }
 
 mfg_get_log <- function() MFG_LOG$entries
+
+# ── Input provenance ─────────────────────────────────────────────────────────
+#
+# The run log records what was done. This records what it was done to. Without
+# it a report can name its methods exactly and still leave the reader unable to
+# tell which of four files in a data directory produced the numbers.
+
+#' Record one input file: where it came from and what state it is in.
+#'
+#' `role` is the file's position in the chain, not a judgement of quality:
+#' "raw" as received, "processed" already filtered or normalized by someone
+#' else, "derived" written by an earlier stage of this pipeline. The checksum is
+#' what lets a later reader confirm the file has not changed since the run.
+mfg_record_input <- function(path, role = c("raw", "processed", "derived"),
+                             note = NULL, taxa = NA_integer_,
+                             samples = NA_integer_) {
+  role <- match.arg(role)
+  full <- normalizePath(path, mustWork = FALSE)
+
+  if (!file.exists(full)) {
+    mfg_log("intake", "input_missing", list(file = basename(path), path = full))
+    warning("Recorded an input that does not exist: ", full, call. = FALSE)
+    return(invisible(NULL))
+  }
+
+  info <- file.info(full)
+  rec <- data.frame(
+    file     = basename(full),
+    path     = full,
+    format   = tolower(tools::file_ext(full)),
+    role     = role,
+    bytes    = as.numeric(info$size),
+    modified = format(info$mtime, "%Y-%m-%d %H:%M:%S"),
+    md5      = unname(tools::md5sum(full)),
+    taxa     = as.integer(taxa),
+    samples  = as.integer(samples),
+    note     = note %||% NA_character_,
+    stringsAsFactors = FALSE
+  )
+
+  # Same file read twice is one input, not two. Keep the first record, which
+  # carries the dimensions from the load that actually built the object.
+  seen <- vapply(MFG_LOG$inputs, function(x) x$path, character(1))
+  if (full %in% seen) return(invisible(rec))
+
+  MFG_LOG$inputs[[length(MFG_LOG$inputs) + 1]] <- rec
+  mfg_log("intake", "input_recorded",
+          list(file = rec$file, format = rec$format, role = role,
+               bytes = rec$bytes, md5 = rec$md5))
+  invisible(rec)
+}
+
+#' Every input file this run read, as one table.
+mfg_inputs <- function() {
+  if (!length(MFG_LOG$inputs)) {
+    return(data.frame(file = character(0), path = character(0),
+                      format = character(0), role = character(0),
+                      bytes = numeric(0), modified = character(0),
+                      md5 = character(0), taxa = integer(0),
+                      samples = integer(0), note = character(0),
+                      stringsAsFactors = FALSE))
+  }
+  do.call(rbind, MFG_LOG$inputs)
+}
 
 # ── Saving outputs ───────────────────────────────────────────────────────────
 

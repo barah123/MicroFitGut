@@ -93,12 +93,12 @@ Full numbers, figures and limitations are in
 The model orchestrates and interprets. The R functions compute. That split is the
 whole design:
 
-- **`reference/`**: 16 documents, ~17,900 words. The judgment: a decision table
+- **`reference/`**: 16 documents, ~19,100 words. The judgment: a decision table
   mapping normalization to the analyses it is valid for, design-to-method tables
   for differential abundance and regression, reporting standards, and a pitfalls
   file covering compositionality, the rarefaction dispute, pseudo-replication,
   structural zeros and taxonomic name instability.
-- **`scripts/`**: 16 R modules, ~7,900 lines, 221 functions. The computation,
+- **`scripts/`**: 16 R modules, ~9,240 lines, 233 functions. The computation,
   with every guard built in and every step logged.
 - **`agents/`**: two auditing subagents that run before a report is final.
 
@@ -384,6 +384,7 @@ publishable-looking, wrong result.
 | **Repeated measures** | Several samples per subject are detected, and independent-samples tests are refused with the correct mixed model named instead. |
 | **Dispersion** | Every PERMANOVA carries a betadisper check, and the conclusion sentence will not say "composition differed" when dispersion does not license it. |
 | **Traceability** | Every number in the report must trace to `run_log.csv` or a saved table. A mechanical check flags the rest for the `verifier` subagent. |
+| **Authoritative source** | A data directory holds several datasets that all load without complaint and all give different answers. When more than one is present, the choice between them must be declared with a reason, which is then quoted in the methods. |
 
 A guard that refuses is doing its job. The message says which reference file
 explains the decision and what the valid alternatives are.
@@ -394,7 +395,8 @@ explains the decision and what the valid alternatives are.
   multiple-testing denominator, REML-vs-ML for model comparison, singular fits,
   Bayesian convergence gates, and post-hoc gating.
 - **`microfitgut:verifier`**: every claim checked against the run's own
-  artifacts: `run_log.csv`, `manifest.csv`, `tables/`, `figures/`.
+  artifacts: `run_log.csv`, `analysis_calls.R`, `manifest.csv`, `tables/`,
+  `figures/`.
 
 Both know the log format and where to look.
 
@@ -561,7 +563,7 @@ microfitgut/
 ├── skills/microfitgut/
 │   ├── SKILL.md          the 11-stage workflow and benchmark mode
 │   ├── reference/        16 documents: the analytical decisions
-│   └── scripts/          16 R modules, 221 functions
+│   └── scripts/          16 R modules, 233 functions
 ├── agents/
 │   ├── statistician.md
 │   └── verifier.md

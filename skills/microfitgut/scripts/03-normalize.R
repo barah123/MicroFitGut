@@ -98,6 +98,14 @@ mfg_set_normalization <- function(ps, value, detail = list()) {
   # from, so the state is recorded against a content fingerprint too.
   mfg_registry_set(ps, "normalization", value)
   mfg_registry_set(ps, "normalization_detail", detail)
+  # Logged because this is an assertion about the data, not bookkeeping. Called
+  # directly at intake it is the analyst's claim about an object built
+  # elsewhere, and an unlogged claim is one the report cannot trace.
+  mfg_log("normalize", "normalization_set",
+          list(value = value,
+               detail = if (length(detail))
+                 paste(names(detail), unlist(detail), sep = "=", collapse = ",")
+               else "none"))
   ps
 }
 

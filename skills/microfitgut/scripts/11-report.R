@@ -45,7 +45,12 @@ capture_provenance <- function(ps_initial = NULL, ps_final = NULL,
     packages = si$packages,
     seeds = c(seeds %||% list(), logged_seeds),
     n_log_entries = length(log_entries),
-    output_dir = mfg_run_dir()
+    output_dir = mfg_run_dir(),
+    # What the analysis was done to, alongside what was done. Both are needed
+    # before another researcher can repeat the run.
+    inputs = mfg_inputs(),
+    authoritative = mfg_authoritative_source(),
+    inventory = MFG_LOG$sources$inventory
   )
 
   if (!is.null(ps_initial)) {
@@ -66,7 +71,8 @@ capture_provenance <- function(ps_initial = NULL, ps_final = NULL,
 
   mfg_log("report", "provenance_captured",
           list(run_id = prov$run_id, n_packages = nrow(si$packages),
-               n_seeds = length(prov$seeds)))
+               n_seeds = length(prov$seeds), n_inputs = nrow(prov$inputs),
+               authoritative = prov$authoritative$file %||% "undeclared"))
   class(prov) <- c("mfg_provenance", "list")
   prov
 }
@@ -87,6 +93,16 @@ print.mfg_provenance <- function(x, ...) {
     cat(sprintf("Seeds:    %s\n",
                 paste(sprintf("%s=%s", names(x$seeds), unlist(x$seeds)), collapse = ", ")))
   }
+  if (!is.null(x$authoritative)) {
+    cat(sprintf("Source:   %s (%s)\n", x$authoritative$file, x$authoritative$reason))
+  } else if (!is.null(x$inventory) && sum(x$inventory$format %in%
+                                         c("rds", "biom", "qza")) > 1) {
+    cat("Source:   UNDECLARED, and the data directory held more than one dataset\n")
+  }
+  if (!is.null(x$inputs) && nrow(x$inputs)) {
+    cat(sprintf("\nInputs (%d):\n", nrow(x$inputs)))
+    print(x$inputs[, c("file", "format", "role", "bytes", "md5")], row.names = FALSE)
+  }
   cat(sprintf("\nPackages (%d):\n", nrow(x$packages)))
   print(x$packages, row.names = FALSE)
   invisible(x)
@@ -100,6 +116,19 @@ provenance_paragraph <- function(prov) {
   parts <- c(
     sprintf("Analysis was performed in R %s (%s) under run identifier %s on %s.",
             prov$r_version, prov$platform, prov$run_id, prov$run_at))
+  if (!is.null(prov$inputs) && nrow(prov$inputs)) {
+    n_in <- nrow(prov$inputs)
+    parts <- c(parts, sprintf("The analysis read %d input file%s (%s), recorded in Table 1 with %s format, role and MD5 checksum.",
+      n_in, if (n_in == 1) "" else "s",
+      paste(prov$inputs$file, collapse = ", "),
+      if (n_in == 1) "its" else "their"))
+  }
+  if (!is.null(prov$authoritative)) {
+    # A colon, not "because": the reason is whatever the analyst wrote, and a
+    # noun phrase after "because" reads as a grammatical error in the methods.
+    parts <- c(parts, sprintf("%s was taken as the authoritative version: %s.",
+      prov$authoritative$file, sub("\\.$", "", prov$authoritative$reason)))
+  }
   if (nrow(key)) {
     parts <- c(parts, sprintf("Key packages: %s.",
       paste(sprintf("%s %s", key$package, key$version), collapse = ", ")))
@@ -134,6 +163,12 @@ assemble_summary <- function(provenance, validation = NULL, qc_log = NULL,
                              sections = list(), title = NULL,
                              group_var = NULL) {
 
+  # An undeclared pick between several self-contained datasets is a reporting
+  # gap of the same kind as an unstated normalization: the methods read as
+  # complete and the reader still cannot tell what was analysed.
+  rival_datasets <- !is.null(provenance$inventory) &&
+    sum(provenance$inventory$format %in% c("rds", "biom", "qza")) > 1
+
   required <- c(
     n_per_group     = !is.null(validation$group_n) || !is.null(sections$alpha),
     exclusions      = !is.null(qc_log),
@@ -142,7 +177,9 @@ assemble_summary <- function(provenance, validation = NULL, qc_log = NULL,
       inherits(s, c("mfg_alpha_test", "mfg_permanova", "mfg_da_result", "mfg_model")),
       logical(1))),
     effect_sizes    = TRUE,
-    software_versions = !is.null(provenance$packages)
+    software_versions = !is.null(provenance$packages),
+    input_provenance  = !is.null(provenance$inputs) && nrow(provenance$inputs) > 0,
+    authoritative_source = !rival_datasets || !is.null(provenance$authoritative)
   )
   missing_required <- names(required)[!required]
 
@@ -326,6 +363,11 @@ render_report <- function(summary_obj, sections_md = list(),
     "```", "",
     "# Provenance", "",
     provenance_paragraph(prov), "",
+    if (!is.null(prov$inputs) && nrow(prov$inputs)) c(
+      "```{r input-table}",
+      "knitr::kable(prov$inputs[, c('file', 'format', 'role', 'bytes', 'modified', 'md5')],",
+      "             caption = 'Table 1. Input files. The checksum identifies the exact file version analysed.')",
+      "```", ""),
     "```{r provenance-table}",
     "knitr::kable(prov$packages, caption = 'Software versions')",
     "```", "")
@@ -415,7 +457,7 @@ render_report <- function(summary_obj, sections_md = list(),
   }
 
   body <- c(body, "# Reproducibility", "",
-    sprintf("Run identifier `%s`. All outputs are under `%s`. The complete step-by-step log is in `run_log.csv`; every number in this report traces to an entry there or to a table in `tables/`.",
+    sprintf("Run identifier `%s`. All outputs are under `%s`. The complete step-by-step log is in `run_log.csv` and the calls that produced it are in `analysis_calls.R`; every number in this report traces to an entry there or to a table in `tables/`.",
             prov$run_id, prov$output_dir), "")
 
   if (length(summary_obj$missing_required)) {
@@ -451,11 +493,60 @@ render_report <- function(summary_obj, sections_md = list(),
   list(rmd = rmd_path, output = out_path)
 }
 
+#' Write out the sequence of MicroFitGut calls the run actually made.
+#'
+#' Each log entry carries the outermost call that produced it, so this is the
+#' analysis in the order it happened, with the arguments as they were passed.
+#'
+#' It is a record, not a finished script. R cannot see, from inside a function,
+#' what its result was assigned to, so the assignments are absent and object
+#' names such as `ps` or `ps_f` appear as they were typed. Consecutive calls
+#' that logged more than one event are collapsed to one line. The header says
+#' this in the file itself, because a file named like a script gets run.
+mfg_write_analysis_script <- function(filename = "analysis_calls.R") {
+  entries <- mfg_get_log()
+  calls <- vapply(entries, function(e) e$call %||% NA_character_, character(1))
+  calls <- calls[!is.na(calls) & nzchar(calls)]
+
+  # One call that logs six events is one line, not six. Only consecutive
+  # repeats collapse: the same function called twice on different data stays
+  # twice, because it is two steps of the analysis.
+  if (length(calls) > 1) calls <- calls[c(TRUE, calls[-1] != calls[-length(calls)])]
+
+  path <- file.path(mfg_run_dir(), filename)
+  header <- c(
+    "# =============================================================================",
+    sprintf("# MicroFitGut call record - run %s", mfg_run_id()),
+    sprintf("# Written %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+    "#",
+    "# Every MicroFitGut call this run made, in order, with the arguments as they",
+    "# were passed. Reconstructed from the run log, not transcribed by hand.",
+    "#",
+    "# READ BEFORE RUNNING. This is a record of what happened, not a script that",
+    "# reproduces it unedited:",
+    "#   - assignments are not captured, so add them back (`ps <- mfg_load(...)`)",
+    "#   - object names appear as they were typed in the session that ran",
+    "#   - calls made outside MicroFitGut functions do not log and are absent",
+    "#",
+    "# Source the scripts and start a run before replaying any of this.",
+    "# =============================================================================",
+    "")
+  writeLines(c(header, calls), path)
+
+  mfg_log("report", "analysis_script_written",
+          list(file = filename, n_calls = length(calls)))
+  invisible(path)
+}
+
 #' Everything the run produced, as one manifest.
 #'
 #' The index the verifier subagent reads to know what exists before checking what
 #' the report claims.
 mfg_manifest <- function() {
+  # Logged before the record is written so this call appears in it, and the
+  # record is written before the file listing so it appears in the manifest.
+  mfg_log("report", "manifest_started", list(run_id = mfg_run_id()))
+  mfg_write_analysis_script()
   d <- mfg_run_dir()
   files <- list.files(d, recursive = TRUE, full.names = FALSE)
   info <- file.info(file.path(d, files))
