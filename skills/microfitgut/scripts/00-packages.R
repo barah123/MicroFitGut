@@ -69,7 +69,9 @@ MFG_PACKAGES <- list(
     list(pkg = "ANCOMBC",    min = "2.0.0",  repo = "bioc",
          note = "ancombc2() — bias correction and structural zeros"),
     list(pkg = "MicrobiomeStat", min = "1.1", repo = "cran",
-         note = "linda() — CLR-based linear model; accepts counts or proportions")
+         note = "linda() — CLR-based linear model; accepts counts or proportions"),
+    list(pkg = "Maaslin2",   min = "1.10.0", repo = "bioc",
+         note = "Maaslin2() — per-feature general linear models with covariates")
   ),
 
   models = list(

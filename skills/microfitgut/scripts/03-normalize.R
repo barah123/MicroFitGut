@@ -53,6 +53,10 @@ MFG_VALID_NORMALIZATION <- list(
   # input that has already been CLR-transformed or rarefied: the first would
   # transform twice, the second discards the counts its winsorization needs.
   da_linda            = c("raw", "tss"),
+  # MaAsLin2 applies its own normalization and transform (TSS and LOG by
+  # default) to whatever it is given, so it wants untransformed input and must
+  # not be handed data that has already been CLR-transformed or rarefied.
+  da_maaslin2         = c("raw", "tss"),
   da_wilcoxon         = c("clr", "tss", "log10", "rarefied"),
   da_kruskal          = c("clr", "tss", "log10", "rarefied"),
 
@@ -162,6 +166,10 @@ mfg_normalization_reason <- function(analysis, norm) {
   if (grepl("^alpha_richness|^faith_pd", analysis) && norm != "rarefied") {
     return(paste("richness estimators count singletons and doubletons, so they",
                  "measure sequencing effort unless depth is equalized"))
+  }
+  if (analysis == "da_maaslin2") {
+    return(paste("MaAsLin2 normalizes and transforms internally, so it needs",
+                 "untransformed input; pre-transformed data is processed twice"))
   }
   if (analysis == "da_linda") {
     return(paste("LinDA CLR-transforms internally and estimates the bias term",

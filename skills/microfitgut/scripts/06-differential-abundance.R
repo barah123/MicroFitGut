@@ -676,6 +676,169 @@ da_linda <- function(ps, fix_formula, group = NULL,
     class = c("mfg_da_result", "list"))
 }
 
+# ── MaAsLin2 ─────────────────────────────────────────────────────────────────
+
+#' MaAsLin2 differential abundance.
+#'
+#' Fits a general linear model per feature after its own normalization and
+#' transform, so covariates are native and the model is easy to read. Three of
+#' its defaults will silently change what you report, and all three are
+#' overridden here.
+#'
+#' max_significance defaults to 0.25 upstream. That is a discovery threshold,
+#' not a significance one. Here it follows `alpha`, which defaults to 0.05.
+#'
+#' standardize defaults to TRUE upstream, which centres and scales continuous
+#' fixed effects. Coefficients are then per standard deviation rather than per
+#' unit, so an age term no longer means what a plan saying "age in years,
+#' uncentred" says it means. The default here is FALSE.
+#'
+#' Multiplicity is the important one. MaAsLin2's own qval is computed over every
+#' feature-by-term row it fitted, so the correction family silently includes the
+#' covariates: a two-covariate model over 500 features corrects across 1,500
+#' tests, not 500. With `correct_within_term = TRUE`, the default, the exposure
+#' rows are extracted first and the adjustment is recomputed across features for
+#' that term alone, which is what "correct within the outcome family" means. The
+#' upstream value is kept alongside as `qval_maaslin` so the two can be compared.
+#'
+#' Reference levels are always sent explicitly. Left unset, a factor's reference
+#' is whatever sorts first, which makes the sign of every coefficient an
+#' accident of level naming.
+da_maaslin2 <- function(ps, fix_formula, group = NULL, reference = NULL,
+                        normalization = "TSS", transform = "LOG",
+                        analysis_method = "LM",
+                        min_prevalence = 0.1, min_abundance = 0, min_variance = 0,
+                        standardize = FALSE,
+                        p_adj_method = "BH", alpha = 0.05,
+                        correct_within_term = TRUE,
+                        output_dir = NULL, keep_output = FALSE,
+                        cores = 1, check_norm = TRUE, verbose = FALSE) {
+
+  if (!requireNamespace("Maaslin2", quietly = TRUE)) {
+    stop("MaAsLin2 is not installed.\n",
+         '  BiocManager::install("Maaslin2")', call. = FALSE)
+  }
+  if (isTRUE(check_norm)) mfg_check_normalization(ps, "da_maaslin2")
+
+  fix_chr <- if (is.character(fix_formula) && length(fix_formula) == 1) {
+    sub("^\\s*~\\s*", "", fix_formula)
+  } else {
+    paste(all.vars(fix_formula), collapse = " + ")
+  }
+  model_vars <- all.vars(stats::as.formula(paste("~", fix_chr)))
+
+  meta <- mfg_meta(ps)
+  absent <- setdiff(model_vars, names(meta))
+  if (length(absent)) {
+    stop("Not in the metadata: ", paste(absent, collapse = ", "), call. = FALSE)
+  }
+  if (!is.null(group) && !group %in% model_vars) {
+    stop("group '", group, "' is not a term in the formula.", call. = FALSE)
+  }
+
+  keep <- stats::complete.cases(meta[, model_vars, drop = FALSE])
+  n_dropped <- sum(!keep)
+  if (n_dropped) {
+    warning(sprintf("%d sample(s) dropped for missing model variables.", n_dropped),
+            call. = FALSE)
+  }
+  meta <- meta[keep, , drop = FALSE]
+  feat <- mfg_otu_taxa_as_rows(ps)[, keep, drop = FALSE]
+  feat <- feat[rowSums(feat) > 0, , drop = FALSE]
+
+  # Every factor's reference is stated, never left to sort order.
+  if (is.null(reference)) {
+    fac <- model_vars[vapply(model_vars,
+                             function(v) is.factor(meta[[v]]) || is.character(meta[[v]]),
+                             logical(1))]
+    reference <- vapply(fac, function(v) {
+      lv <- if (is.factor(meta[[v]])) levels(droplevels(meta[[v]])) else sort(unique(meta[[v]]))
+      paste0(v, ",", lv[1])
+    }, character(1), USE.NAMES = FALSE)
+  }
+
+  out_dir <- output_dir %||% file.path(tempdir(),
+                                       paste0("maaslin2_", as.integer(Sys.time())))
+  if (!isTRUE(keep_output)) on.exit(unlink(out_dir, recursive = TRUE), add = TRUE)
+
+  # MaAsLin2 wants samples as rows.
+  fit <- Maaslin2::Maaslin2(
+    input_data = as.data.frame(t(feat)), input_metadata = as.data.frame(meta),
+    output = out_dir, fixed_effects = model_vars,
+    reference = if (length(reference)) reference else NULL,
+    normalization = normalization, transform = transform,
+    analysis_method = analysis_method,
+    min_prevalence = min_prevalence, min_abundance = min_abundance,
+    min_variance = min_variance, standardize = standardize,
+    correction = p_adj_method, max_significance = alpha,
+    plot_heatmap = FALSE, plot_scatter = FALSE, cores = cores)
+
+  all_res <- fit$results
+  if (is.null(all_res) || !nrow(all_res)) {
+    stop("MaAsLin2 returned no results. Check min_prevalence and the input table.",
+         call. = FALSE)
+  }
+
+  term <- group %||% setdiff(unique(all_res$metadata), "")[1]
+  res <- all_res[all_res$metadata == term, , drop = FALSE]
+  if (!nrow(res)) {
+    stop("No MaAsLin2 rows for '", term, "'. Terms fitted: ",
+         paste(unique(all_res$metadata), collapse = ", "), call. = FALSE)
+  }
+  # A factor with more than two levels yields one row per contrast. Keep them
+  # all, but say so, because a single "significant" count would hide the split.
+  contrasts <- unique(res$value)
+
+  res$taxon        <- res$feature
+  res$qval_maaslin <- res$qval          # upstream: corrected over all terms
+  res$p_value      <- res$pval
+  res$q_value      <- if (isTRUE(correct_within_term)) {
+    stats::p.adjust(res$pval, method = p_adj_method)
+  } else res$qval
+  res$effect_size  <- res$coef
+  res$std_error    <- res$stderr
+  res$significant  <- !is.na(res$q_value) & res$q_value < alpha
+  res <- res[order(res$q_value, res$p_value), , drop = FALSE]
+
+  n_sig <- stats::setNames(sum(res$significant, na.rm = TRUE), term)
+
+  mfg_log("da", "maaslin2", list(
+    fix_formula = fix_chr, group = term, contrasts = paste(contrasts, collapse = ", "),
+    reference = paste(reference, collapse = "; "),
+    normalization = normalization, transform = transform,
+    analysis_method = analysis_method, standardize = standardize,
+    min_prevalence = min_prevalence, min_abundance = min_abundance,
+    p_adj_method = p_adj_method, alpha = alpha,
+    correct_within_term = correct_within_term,
+    n_terms_fitted = length(unique(all_res$metadata)),
+    n_rows_all_terms = nrow(all_res),
+    n_samples = ncol(feat), n_samples_dropped = n_dropped,
+    n_taxa_tested = nrow(res), n_significant = unname(n_sig)))
+
+  structure(list(
+    method = "maaslin2", group = term, fix_formula = fix_chr,
+    contrasts = contrasts, reference = reference,
+    results = res, all_terms = all_res, fit = fit,
+    normalization = normalization, transform = transform,
+    analysis_method = analysis_method, standardize = standardize,
+    p_adj_method = p_adj_method, alpha = alpha,
+    correct_within_term = correct_within_term,
+    n_tested = nrow(res), n_significant = n_sig,
+    n_samples_dropped = n_dropped,
+    maaslin_settings = sprintf(
+      "%s on %s/%s, standardize = %s, min_prev = %s, p_adj = %s (%s)",
+      analysis_method, normalization, transform, standardize, min_prevalence,
+      p_adj_method,
+      if (isTRUE(correct_within_term)) sprintf("recomputed within '%s'", term)
+      else "upstream, across all terms"),
+    caveat = if (!isTRUE(correct_within_term)) paste(
+      "q-values are MaAsLin2's own, corrected across every feature-by-term row",
+      "it fitted, so the family includes the covariates. Set",
+      "correct_within_term = TRUE to correct across features for the exposure",
+      "alone.") else NA_character_),
+    class = c("mfg_da_result", "list"))
+}
+
 # ── DESeq2 ───────────────────────────────────────────────────────────────────
 
 #' DESeq2 differential abundance.
@@ -870,6 +1033,7 @@ print.mfg_da_result <- function(x, ...) {
                                             x$prv_cut, x$lib_cut, x$struc_zero, x$p_adj_method))
   if (!is.null(x$linda_settings)) cat(x$linda_settings, "\n", sep = "")
   if (!is.null(x$aldex_settings)) cat(x$aldex_settings, "\n", sep = "")
+  if (!is.null(x$maaslin_settings)) cat(x$maaslin_settings, "\n", sep = "")
   if (!is.null(x$n_taxa_complete)) {
     cat(sprintf("Size factors: positive-count geometric mean over all taxa (%d of %d taxa present in every sample; median SF %.3f)\n",
                 x$n_taxa_complete, x$n_total, stats::median(x$size_factors)))
