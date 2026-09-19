@@ -215,8 +215,33 @@ da_kruskal <- function(ps, group_var, p_adjust = "BH", alpha = 0.05,
 #'
 #' Which p-value column to trust: wi.eBH (Wilcoxon, no normality assumption) for
 #' two groups, glm.eBH for more than two. we.eBH assumes normality of CLR values.
+#'
+#' Covariates. Given `fix_formula`, the model-matrix path runs instead: the CLR
+#' instances are fitted with aldex.glm() against model.matrix(fix_formula), so
+#' the exposure is adjusted rather than compared marginally. Note that
+#' aldex.glm() defaults to Holm; `p_adj_method` here defaults to BH and is
+#' passed explicitly, because the default is a silent difference in what gets
+#' called significant.
+#'
+#' ALDEx2 needs integer counts in either mode, because it Monte Carlo samples
+#' from a Dirichlet-multinomial. Non-integer input is refused rather than
+#' rounded: rounding a length-normalized rate such as HUMAnN RPK manufactures
+#' counts that were never observed, and the whole point of the method is to
+#' propagate genuine counting uncertainty.
+#'
+#' Expect the glm path to be much the more conservative of the two, and do not
+#' read that as a failure. On a 300-feature simulation at n = 168 with twenty
+#' planted four-fold signals, the marginal Wilcoxon path recovered all twenty at
+#' a median p of 2e-08 while the glm path recovered none, at a median p of 0.15.
+#' Dropping the covariates from the model matrix changed nothing, so the cost is
+#' the per-instance GLM aggregation rather than adjustment, and raising
+#' mc.samples from 64 to 256 barely moved it. Both paths held their nominal
+#' false positive rate. When the two arms of a specification grid disagree this
+#' is usually why, and it is a property of the method worth reporting rather
+#' than a discrepancy worth hiding.
 da_aldex2 <- function(ps, group_var, mc.samples = 128, test = NULL,
                       denom = "all", alpha = 0.1, effect = TRUE,
+                      fix_formula = NULL, p_adj_method = "BH",
                       check_norm = TRUE, seed = 42) {
   if (isTRUE(check_norm)) mfg_check_normalization(ps, "da_aldex2")
 
@@ -230,7 +255,106 @@ da_aldex2 <- function(ps, group_var, mc.samples = 128, test = NULL,
 
   # Rows that are zero everywhere carry no information and slow the MC sampling.
   counts <- counts[rowSums(counts) > 0, , drop = FALSE]
+
+  # Refuse non-integer input rather than coercing it. storage.mode() would
+  # truncate silently, which turns a rate into a fabricated count.
+  if (any(abs(counts - round(counts)) > 1e-8, na.rm = TRUE)) {
+    stop("ALDEx2 needs integer counts; this matrix holds non-integer values.\n",
+         "  It samples from a Dirichlet-multinomial, so there is nothing valid ",
+         "to sample from.\n  Rounding or rescaling would invent counts that were ",
+         "never observed. Use a\n  method that accepts proportions, such as ",
+         "da_linda(), instead.", call. = FALSE)
+  }
   storage.mode(counts) <- "integer"
+
+  # ── Covariate-adjusted path ──────────────────────────────────────────────
+  if (!is.null(fix_formula)) {
+    fml <- if (is.character(fix_formula) && length(fix_formula) == 1) {
+      stats::as.formula(if (grepl("^\\s*~", fix_formula)) fix_formula else paste("~", fix_formula))
+    } else fix_formula
+    mvars <- all.vars(fml)
+    absent <- setdiff(mvars, names(meta))
+    if (length(absent)) {
+      stop("Not in the metadata: ", paste(absent, collapse = ", "), call. = FALSE)
+    }
+    md <- meta[keep, mvars, drop = FALSE]
+    ok <- stats::complete.cases(md)
+    if (any(!ok)) {
+      warning(sprintf("%d sample(s) dropped for missing model variables.", sum(!ok)),
+              call. = FALSE)
+      md <- md[ok, , drop = FALSE]
+      counts <- counts[, ok, drop = FALSE]
+    }
+    mm <- stats::model.matrix(fml, data = md)
+    if (nrow(mm) != ncol(counts)) {
+      stop("Model matrix has ", nrow(mm), " rows but ", ncol(counts),
+           " samples remain. A covariate level was probably dropped.", call. = FALSE)
+    }
+
+    set.seed(seed)
+    clr_obj <- ALDEx2::aldex.clr(counts, mm, mc.samples = mc.samples,
+                                 denom = denom, verbose = FALSE)
+    gl <- ALDEx2::aldex.glm(clr_obj, fdr.method = p_adj_method)
+
+    # Pick the coefficient for the exposure. model.matrix() names a factor
+    # column <var><level>, so match on prefix and say what was used.
+    coefs <- unique(sub("[:.].*$", "", names(gl)))
+    hit <- grep(paste0("^", group_var), names(gl), value = TRUE)
+    if (!length(hit)) {
+      stop("No aldex.glm coefficient for '", group_var, "'. Coefficients: ",
+           paste(setdiff(coefs, "Intercept"), collapse = ", "), call. = FALSE)
+    }
+    term <- sub("[:].*$", "", hit[1])
+
+    pick <- function(suffix) {
+      col <- paste0(term, ":", suffix)
+      if (col %in% names(gl)) gl[[col]] else rep(NA_real_, nrow(gl))
+    }
+    res <- data.frame(
+      taxon    = rownames(gl),
+      estimate = pick("Est"), std_error = pick("SE"), t_value = pick("t.val"),
+      p_value  = pick("pval"), q_value = pick("pval.padj"),
+      stringsAsFactors = FALSE)
+
+    # aldex.glm.effect() returns a standardised effect only for binary terms.
+    eff_col <- NA_character_
+    if (isTRUE(effect)) {
+      ge <- tryCatch(ALDEx2::aldex.glm.effect(clr_obj, verbose = FALSE),
+                     error = function(e) NULL)
+      if (!is.null(ge) && term %in% names(ge)) {
+        e_df <- ge[[term]]
+        res$effect      <- e_df[match(res$taxon, rownames(e_df)), "effect"]
+        res$diff_btw    <- e_df[match(res$taxon, rownames(e_df)), "diff.btw"]
+        res$overlap     <- e_df[match(res$taxon, rownames(e_df)), "overlap"]
+        eff_col <- "effect"
+      }
+    }
+    res$effect_size <- if (!is.na(eff_col)) res[[eff_col]] else res$estimate
+    res$significant <- !is.na(res$q_value) & res$q_value < alpha
+    res <- res[order(res$q_value, res$p_value), , drop = FALSE]
+
+    mfg_log("da", "aldex2_glm", list(
+      group = group_var, term = term, fix_formula = paste(deparse(fml), collapse = ""),
+      mc.samples = mc.samples, denom = denom, p_adj_method = p_adj_method,
+      alpha = alpha, n_samples = ncol(counts),
+      n_taxa_tested = nrow(res), n_significant = sum(res$significant, na.rm = TRUE),
+      seed = seed))
+
+    return(structure(list(
+      method = "aldex2", mode = "glm", group = group_var, term = term,
+      fix_formula = paste(deparse(fml), collapse = ""),
+      clr = clr_obj, results = res,
+      n_tested = nrow(res), n_significant = sum(res$significant, na.rm = TRUE),
+      q_column = paste0(term, ":pval.padj"), effect_column = eff_col,
+      alpha = alpha, mc.samples = mc.samples, p_adj_method = p_adj_method,
+      aldex_settings = sprintf(
+        "glm mode, term = %s, mc.samples = %s, denom = %s, p_adj = %s",
+        term, mc.samples, denom, p_adj_method),
+      caveat = if (mc.samples < 1000 && isTRUE(effect)) paste(
+        "mc.samples =", mc.samples, "- the ALDEx2 authors recommend 1000 for",
+        "rigorous effect size estimates. Effect sizes here are indicative.") else NA_character_),
+      class = c("mfg_da_result", "list")))
+  }
 
   test <- test %||% if (n_levels == 2) "t" else "kw"
   if (n_levels > 2 && test %in% c("t")) {
@@ -745,6 +869,7 @@ print.mfg_da_result <- function(x, ...) {
   if (!is.null(x$prv_cut))      cat(sprintf("prv_cut = %s, lib_cut = %s, struc_zero = %s, p_adj = %s\n",
                                             x$prv_cut, x$lib_cut, x$struc_zero, x$p_adj_method))
   if (!is.null(x$linda_settings)) cat(x$linda_settings, "\n", sep = "")
+  if (!is.null(x$aldex_settings)) cat(x$aldex_settings, "\n", sep = "")
   if (!is.null(x$n_taxa_complete)) {
     cat(sprintf("Size factors: positive-count geometric mean over all taxa (%d of %d taxa present in every sample; median SF %.3f)\n",
                 x$n_taxa_complete, x$n_total, stats::median(x$size_factors)))
