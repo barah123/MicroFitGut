@@ -285,6 +285,105 @@ build_phyloseq_from_profile <- function(profile_path, meta = NULL, lineage_col =
                rows_collapsed = pp$n_rows_collapsed, is_relative = pp$is_relative))
   ps
 }
+#' Build a phyloseq object from a SummarizedExperiment.
+#'
+#' curatedMetagenomicData's curatedMetagenomicData() and returnSamples() return
+#' a (Tree)SummarizedExperiment, while the rest of this toolkit works on
+#' phyloseq. This is the bridge, and it does three things beyond reshaping.
+#'
+#' It carries colData across as sample data, dropping any list column, because
+#' phyloseq's sample_data() requires a plain data frame and will fail opaquely
+#' on curated metadata that holds one.
+#'
+#' It detects whether the assay holds counts or proportions and records the
+#' answer in the normalization registry, rather than leaving a later method to
+#' assume. For functional assays this is the decision that determines which
+#' differential abundance methods can run at all: ALDEx2 and DESeq2 need integer
+#' counts, LinDA does not.
+#'
+#' It marks functional assays, whose rows are pathways or gene families rather
+#' than taxa, so downstream code does not try to read a lineage out of them.
+build_phyloseq_from_se <- function(se, assay_name = NULL, meta = NULL,
+                                   normalization = NULL, functional = NULL) {
+  if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
+    stop("Needs SummarizedExperiment.\n",
+         '  BiocManager::install("SummarizedExperiment")', call. = FALSE)
+  }
+  assays_available <- SummarizedExperiment::assayNames(se)
+  an <- assay_name %||% (if (length(assays_available)) assays_available[1] else 1L)
+  mat <- as.matrix(SummarizedExperiment::assay(se, an))   # features x samples
+
+  cd <- as.data.frame(SummarizedExperiment::colData(se), stringsAsFactors = FALSE)
+  # A list column is legal in a DataFrame and fatal in sample_data().
+  is_list_col <- vapply(cd, function(x) is.list(x) && !is.data.frame(x), logical(1))
+  if (any(is_list_col)) {
+    dropped <- names(cd)[is_list_col]
+    cd <- cd[, !is_list_col, drop = FALSE]
+    message("Dropped list column(s) from colData: ", paste(dropped, collapse = ", "))
+  }
+  if (!is.null(meta)) {
+    if (is.character(meta) && length(meta) == 1) {
+      mfg_record_input(meta, "raw")
+      meta <- utils::read.csv(meta, header = TRUE, row.names = 1, na.strings = "NA")
+    }
+    common <- intersect(rownames(cd), rownames(meta))
+    if (!length(common)) stop("Supplied metadata shares no sample ids with the object.",
+                              call. = FALSE)
+    cd <- cbind(cd[common, , drop = FALSE],
+                meta[common, setdiff(names(meta), names(cd)), drop = FALSE])
+    mat <- mat[, common, drop = FALSE]
+  }
+  if (!identical(colnames(mat), rownames(cd))) {
+    common <- intersect(colnames(mat), rownames(cd))
+    if (!length(common)) stop("Assay columns and colData rows share no ids.", call. = FALSE)
+    mat <- mat[, common, drop = FALSE]; cd <- cd[common, , drop = FALSE]
+  }
+
+  ps <- phyloseq::phyloseq(
+    phyloseq::otu_table(mat, taxa_are_rows = TRUE),
+    phyloseq::sample_data(cd))
+
+  # Rows that carry a HUMAnN-style lineage separator, or the unmapped and
+  # unintegrated sentinels, are functional rather than taxonomic.
+  if (is.null(functional)) {
+    functional <- any(grepl("^(UNMAPPED|UNINTEGRATED)", rownames(mat))) ||
+      any(grepl("\\|", rownames(mat))) ||
+      any(grepl("PWY|^UniRef", rownames(mat)))
+  }
+  if (isTRUE(functional)) {
+    attr(ps, "mfg_is_functional") <- TRUE
+    # Side effect only: mfg_registry_set() returns the value, not the object.
+    mfg_registry_set(ps, "is_functional", TRUE)
+  }
+
+  detected <- if (looks_like_relative_abundance(mat)) "tss" else "raw"
+  norm <- normalization %||% detected
+  ps <- mfg_set_normalization(ps, norm)
+
+  integerish <- all(abs(mat - round(mat)) < 1e-8, na.rm = TRUE)
+  mfg_log("intake", "from_summarized_experiment", list(
+    assay = as.character(an),
+    assays_available = paste(assays_available, collapse = ", "),
+    n_features = nrow(mat), n_samples = ncol(mat),
+    functional = isTRUE(functional),
+    normalization_detected = detected,
+    normalization_set = norm,
+    integer_valued = integerish,
+    sample_sum_median = stats::median(colSums(mat), na.rm = TRUE)))
+
+  message(sprintf(
+    "SummarizedExperiment -> phyloseq: %d features x %d samples, assay '%s'.",
+    nrow(mat), ncol(mat), as.character(an)))
+  message(sprintf(
+    "  values look like %s and are %sinteger-valued; normalization set to '%s'.",
+    if (detected == "tss") "proportions" else "counts",
+    if (integerish) "" else "not ", norm))
+  if (!integerish) {
+    message("  note: ALDEx2 and DESeq2 require integer counts and cannot run on this assay.")
+  }
+  ps
+}
+
 
 #' Load a functional profile (PICRUSt2 / HUMAnN) as a phyloseq object.
 #'

@@ -170,6 +170,67 @@ filter_prevalence <- function(ps, min_prevalence = 0.10, detection = 0) {
   mfg_carry_attrs(phyloseq::prune_taxa(prev_n >= thresh, ps), ps)
 }
 
+#' Drop HUMAnN bookkeeping rows and species-stratified rows.
+#'
+#' A HUMAnN pathway or gene family table is not a flat feature table. It carries
+#' two sentinel rows, UNMAPPED and UNINTEGRATED, which count reads that did not
+#' map or did not fall in a known pathway, and it repeats every community-level
+#' feature once per contributing species, written FEATURE|g__Genus.s__species.
+#'
+#' Both have to go before testing, for different reasons. The sentinels are
+#' quality measures rather than biology, and they are usually large enough to
+#' dominate any compositional transform. The stratified rows are not independent
+#' of the community rows they decompose, so leaving them in tests the same
+#' signal many times over and inflates the multiple-testing denominator with
+#' rows that cannot fail independently.
+#'
+#' Returns the pruned object with a summary attached as the "mfg_humann_filter"
+#' attribute, so the counts can be reported rather than asserted.
+filter_humann <- function(ps, drop_sentinels = TRUE, drop_stratified = TRUE,
+                          sentinels = c("UNMAPPED", "UNINTEGRATED"),
+                          verbose = TRUE) {
+  feats <- phyloseq::taxa_names(ps)
+  n0 <- length(feats)
+
+  is_sentinel <- rep(FALSE, n0)
+  if (isTRUE(drop_sentinels)) {
+    pat <- paste0("^(", paste(sentinels, collapse = "|"), ")")
+    is_sentinel <- grepl(pat, feats, ignore.case = TRUE)
+  }
+  # The pipe separates a feature from the species it was attributed to. It does
+  # not otherwise occur in MetaCyc or UniRef identifiers.
+  is_strat <- rep(FALSE, n0)
+  if (isTRUE(drop_stratified)) is_strat <- grepl("\\|", feats, fixed = FALSE)
+
+  keep <- !is_sentinel & !is_strat
+  if (!any(keep)) {
+    stop("Every feature was removed. Check that this is a HUMAnN table and that ",
+         "the rows are features, not samples.", call. = FALSE)
+  }
+
+  summary_tbl <- data.frame(
+    step = c("input", "sentinel rows removed", "stratified rows removed", "retained"),
+    n    = c(n0, sum(is_sentinel), sum(is_strat & !is_sentinel), sum(keep)),
+    stringsAsFactors = FALSE)
+
+  out <- mfg_carry_attrs(phyloseq::prune_taxa(keep, ps), ps)
+  attr(out, "mfg_humann_filter") <- summary_tbl
+
+  mfg_log("qc", "filter_humann", list(
+    n_input = n0,
+    n_sentinel_removed = sum(is_sentinel),
+    sentinels_found = paste(feats[is_sentinel], collapse = ", "),
+    n_stratified_removed = sum(is_strat & !is_sentinel),
+    n_retained = sum(keep)))
+
+  if (isTRUE(verbose)) {
+    message(sprintf(
+      "filter_humann: %d features in, %d sentinel and %d stratified removed, %d retained.",
+      n0, sum(is_sentinel), sum(is_strat & !is_sentinel), sum(keep)))
+  }
+  out
+}
+
 #' Abundance filter: keep taxa reaching a minimum total or mean relative share.
 filter_abundance <- function(ps, min_total_reads = NULL, min_mean_relative = NULL) {
   keep <- rep(TRUE, phyloseq::ntaxa(ps))
