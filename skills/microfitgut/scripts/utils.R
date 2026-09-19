@@ -567,6 +567,20 @@ leaf_lineages <- function(lineages, sep = "|") {
 looks_like_relative_abundance <- function(mat) {
   if (!length(mat)) return(FALSE)
   if (any(mat < 0, na.rm = TRUE)) return(FALSE)
+
+  # A HUMAnN table repeats every feature once per contributing species, written
+  # FEATURE|g__Genus.s__species, so the same abundance is present twice and the
+  # column totals land well above 1 even when the values are proportions. On a
+  # real pathway table the raw totals run to about 1.75, which reads as counts
+  # and sets the wrong normalization for everything downstream. The unstratified
+  # rows are the closed composition: UNMAPPED plus UNINTEGRATED plus the
+  # community features sum to exactly 1. Judge on those.
+  rn <- rownames(mat)
+  if (!is.null(rn)) {
+    unstrat <- !grepl("|", rn, fixed = TRUE)
+    if (any(unstrat) && !all(unstrat)) mat <- mat[unstrat, , drop = FALSE]
+  }
+
   totals <- colSums(mat, na.rm = TRUE)
   totals <- totals[totals > 0]
   if (!length(totals)) return(FALSE)
