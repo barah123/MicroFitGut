@@ -67,7 +67,9 @@ MFG_PACKAGES <- list(
     list(pkg = "ALDEx2",     min = "1.28.0", repo = "bioc",
          note = "Dirichlet-multinomial Monte Carlo CLR differential abundance"),
     list(pkg = "ANCOMBC",    min = "2.0.0",  repo = "bioc",
-         note = "ancombc2() — bias correction and structural zeros")
+         note = "ancombc2() — bias correction and structural zeros"),
+    list(pkg = "MicrobiomeStat", min = "1.1", repo = "cran",
+         note = "linda() — CLR-based linear model; accepts counts or proportions")
   ),
 
   models = list(

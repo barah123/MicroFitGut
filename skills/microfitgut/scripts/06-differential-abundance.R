@@ -360,6 +360,198 @@ da_ancombc2 <- function(ps, fix_formula, group = NULL, rand_formula = NULL,
     class = c("mfg_da_result", "list"))
 }
 
+# ── LinDA ────────────────────────────────────────────────────────────────────
+
+#' LinDA differential abundance.
+#'
+#' Fits a linear model to CLR-transformed abundances and then corrects the
+#' compositional bias in the coefficients, rather than trying to remove it
+#' before fitting. Two consequences matter in practice. It takes a full model
+#' formula, so covariates are handled natively. And it accepts proportions as
+#' well as counts, which makes it the usable option when an assay cannot be
+#' resolved to integers, where ALDEx2 and DESeq2 cannot run at all.
+#'
+#' feature_dat_type: "count" or "proportion". Left NULL it is inferred, but the
+#' inference is a guess about the data and is logged as one. State it when you
+#' know, because LinDA's zero handling differs between the two.
+#'
+#' Pseudo-count sensitivity. LinDA has no equivalent of ANCOM-BC2's built-in
+#' sensitivity flag, yet a result that survives only one arbitrary zero
+#' replacement is not a finding. With sensitivity = TRUE the model is refitted
+#' across `sens_pseudo_cnt` with adaptive zero handling switched off, and a
+#' feature is called robust only if it stays significant with the same sign in
+#' every fit. The count of robust features is returned as `diff_robust_<term>`,
+#' matching the ANCOM-BC2 field so that downstream code and printing treat the
+#' two the same way.
+da_linda <- function(ps, fix_formula, group = NULL,
+                     feature_dat_type = NULL,
+                     prv_cut = 0.10,
+                     zero_handling = c("pseudo-count", "imputation"),
+                     pseudo_cnt = 0.5, adaptive = TRUE,
+                     is_winsor = TRUE, outlier_pct = 0.03, corr_cut = 0.1,
+                     p_adj_method = "BH", alpha = 0.05,
+                     sensitivity = TRUE, sens_pseudo_cnt = c(0.1, 0.5, 1),
+                     n_cores = 1, check_norm = TRUE, verbose = FALSE) {
+
+  if (!requireNamespace("MicrobiomeStat", quietly = TRUE)) {
+    stop("LinDA needs the MicrobiomeStat package.\n",
+         '  install.packages("MicrobiomeStat")', call. = FALSE)
+  }
+  if (isTRUE(check_norm)) mfg_check_normalization(ps, "da_linda")
+  zero_handling <- match.arg(zero_handling)
+
+  fix_chr <- if (is.character(fix_formula) && length(fix_formula) == 1) {
+    sub("^\\s*~\\s*", "", fix_formula)
+  } else {
+    paste(all.vars(fix_formula), collapse = " + ")
+  }
+  model_vars <- all.vars(stats::as.formula(paste("~", fix_chr)))
+
+  meta <- mfg_meta(ps)
+  miss <- setdiff(model_vars, names(meta))
+  if (length(miss)) {
+    stop("Not in the metadata: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+
+  # Complete cases only, and say how many were dropped. LinDA would otherwise
+  # fail opaquely on an NA in a covariate.
+  keep <- stats::complete.cases(meta[, model_vars, drop = FALSE])
+  n_dropped <- sum(!keep)
+  if (n_dropped) {
+    warning(sprintf("%d sample(s) dropped for missing model variables.", n_dropped),
+            call. = FALSE)
+  }
+  feat <- mfg_otu_taxa_as_rows(ps)[, keep, drop = FALSE]   # taxa x samples
+  meta <- meta[keep, , drop = FALSE]
+
+  feat <- feat[rowSums(feat) > 0, , drop = FALSE]
+
+  if (is.null(feature_dat_type)) {
+    feature_dat_type <- if (looks_like_relative_abundance(feat)) "proportion" else "count"
+    inferred <- TRUE
+    warning(sprintf(paste0(
+      "feature.dat.type was inferred as '%s'.\n",
+      "  This is not cosmetic: the count and proportion paths handle zeros ",
+      "differently and\n  pseudo.cnt applies only to counts, so the same matrix ",
+      "declared either way can give\n  materially different p-values. Pass ",
+      "feature_dat_type explicitly."), feature_dat_type), call. = FALSE)
+  } else {
+    feature_dat_type <- match.arg(feature_dat_type, c("count", "proportion"))
+    inferred <- FALSE
+  }
+
+  fit_once <- function(pc, adapt, zh) {
+    MicrobiomeStat::linda(
+      feature.dat = feat, meta.dat = meta,
+      formula = paste("~", fix_chr),
+      feature.dat.type = feature_dat_type,
+      prev.filter = prv_cut, is.winsor = is_winsor, outlier.pct = outlier_pct,
+      adaptive = adapt, zero.handling = zh, pseudo.cnt = pc,
+      corr.cut = corr_cut, p.adj.method = p_adj_method, alpha = alpha,
+      n.cores = n_cores, verbose = verbose)
+  }
+
+  out <- fit_once(pseudo_cnt, adaptive, zero_handling)
+
+  # LinDA names each output element after a model coefficient. Pick the term
+  # for `group` when given; otherwise take the first non-intercept term and say
+  # which one was used rather than letting the choice go unrecorded.
+  terms_all <- names(out$output)
+  term <- if (!is.null(group)) {
+    hit <- terms_all[startsWith(terms_all, group)]
+    if (!length(hit)) {
+      stop("No LinDA coefficient for group '", group, "'. Available: ",
+           paste(terms_all, collapse = ", "), call. = FALSE)
+    }
+    hit[1]
+  } else {
+    terms_all[!grepl("\\(Intercept\\)", terms_all)][1]
+  }
+
+  res <- out$output[[term]]
+  res$taxon <- rownames(res)
+  # Column names the rest of the toolkit expects, so da_significant() and
+  # da_compare() need no LinDA-specific branch.
+  res$effect_size <- res$log2FoldChange
+  res$q_value     <- res$padj
+  res$p_value     <- res$pvalue
+  res$significant <- !is.na(res$padj) & res$padj < alpha
+  res <- res[order(res$q_value, res$p_value), , drop = FALSE]
+
+  n_sig <- stats::setNames(sum(res$significant, na.rm = TRUE), term)
+
+  # ── Pseudo-count sensitivity ───────────────────────────────────────────────
+  robust_taxa <- NULL
+  n_sig_robust <- NULL
+  sens_detail  <- NULL
+  if (isTRUE(sensitivity) && any(res$significant, na.rm = TRUE)) {
+    grid <- sort(unique(c(pseudo_cnt, sens_pseudo_cnt)))
+    per_fit <- lapply(grid, function(pc) {
+      o <- tryCatch(fit_once(pc, FALSE, "pseudo-count"), error = function(e) NULL)
+      if (is.null(o) || is.null(o$output[[term]])) return(NULL)
+      d <- o$output[[term]]
+      data.frame(taxon = rownames(d), sig = !is.na(d$padj) & d$padj < alpha,
+                 sign = sign(d$log2FoldChange), stringsAsFactors = FALSE)
+    })
+    ok <- !vapply(per_fit, is.null, logical(1))
+    if (any(ok)) {
+      per_fit <- per_fit[ok]
+      cand <- res$taxon[res$significant]
+      robust_taxa <- Filter(function(tx) {
+        rows <- lapply(per_fit, function(d) d[match(tx, d$taxon), , drop = FALSE])
+        all(vapply(rows, function(r) isTRUE(r$sig), logical(1))) &&
+          length(unique(vapply(rows, function(r) r$sign, numeric(1)))) == 1
+      }, cand)
+      res$passed_ss <- res$taxon %in% robust_taxa
+      # Named to match ANCOM-BC2 so print.mfg_da_result and any downstream
+      # reporting treat the two methods identically.
+      n_sig_robust <- stats::setNames(length(robust_taxa),
+                                      paste0("diff_robust_", term))
+      sens_detail <- list(pseudo_counts = grid, n_fits = length(per_fit),
+                          n_failed = sum(!ok))
+    }
+  }
+
+  mfg_log("da", "linda", list(
+    fix_formula = fix_chr, group = group %||% "none", term = term,
+    feature_dat_type = feature_dat_type,
+    feature_dat_type_inferred = inferred,
+    prev_filter = prv_cut, zero_handling = zero_handling,
+    pseudo_cnt = pseudo_cnt, adaptive = adaptive,
+    is_winsor = is_winsor, outlier_pct = outlier_pct,
+    p_adj_method = p_adj_method, alpha = alpha,
+    n_samples = ncol(feat), n_samples_dropped = n_dropped,
+    n_taxa_tested = nrow(res), n_significant = unname(n_sig),
+    n_significant_robust = if (is.null(n_sig_robust)) NA_integer_ else unname(n_sig_robust),
+    sensitivity_pseudo_counts = if (is.null(sens_detail)) "not run" else
+      paste(sens_detail$pseudo_counts, collapse = ", ")))
+
+  structure(list(
+    method = "linda", group = group, fix_formula = fix_chr, term = term,
+    out = out, results = res, all_terms = out$output,
+    feature_dat_type = feature_dat_type,
+    feature_dat_type_inferred = inferred,
+    bias = out$bias,
+    prv_cut_linda = prv_cut, zero_handling = zero_handling,
+    pseudo_cnt = pseudo_cnt, adaptive = adaptive,
+    p_adj_method = p_adj_method, alpha = alpha,
+    n_tested = nrow(res), n_significant = n_sig,
+    n_significant_robust = n_sig_robust,
+    robust_taxa = robust_taxa, sensitivity = sens_detail,
+    n_samples_dropped = n_dropped,
+    linda_settings = sprintf(
+      "input = %s%s, prev.filter = %s, zero handling = %s (pseudo.cnt %s, adaptive %s), p_adj = %s",
+      feature_dat_type, if (inferred) " (inferred)" else "", prv_cut,
+      zero_handling, pseudo_cnt, adaptive, p_adj_method),
+    caveat = if (isTRUE(inferred)) paste(
+      "feature.dat.type was inferred as", feature_dat_type, "rather than declared.",
+      "The count and proportion paths handle zeros differently and pseudo.cnt",
+      "applies only to counts, so the same matrix declared either way can give",
+      "materially different p-values. Declare the type and re-run before",
+      "reporting anything from this fit.") else NA_character_),
+    class = c("mfg_da_result", "list"))
+}
+
 # ── DESeq2 ───────────────────────────────────────────────────────────────────
 
 #' DESeq2 differential abundance.
@@ -552,6 +744,7 @@ print.mfg_da_result <- function(x, ...) {
                                             x$test, x$fitType))
   if (!is.null(x$prv_cut))      cat(sprintf("prv_cut = %s, lib_cut = %s, struc_zero = %s, p_adj = %s\n",
                                             x$prv_cut, x$lib_cut, x$struc_zero, x$p_adj_method))
+  if (!is.null(x$linda_settings)) cat(x$linda_settings, "\n", sep = "")
   if (!is.null(x$n_taxa_complete)) {
     cat(sprintf("Size factors: positive-count geometric mean over all taxa (%d of %d taxa present in every sample; median SF %.3f)\n",
                 x$n_taxa_complete, x$n_total, stats::median(x$size_factors)))

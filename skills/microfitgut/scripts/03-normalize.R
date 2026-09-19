@@ -47,6 +47,12 @@ MFG_VALID_NORMALIZATION <- list(
   da_deseq2           = c("raw"),
   da_ancombc2         = c("raw"),
   da_aldex2           = c("raw"),
+  # LinDA fits a linear model on CLR-transformed data and estimates the bias
+  # itself, so unlike the count models above it accepts either counts or
+  # proportions. It must be told which it was given. What it cannot take is
+  # input that has already been CLR-transformed or rarefied: the first would
+  # transform twice, the second discards the counts its winsorization needs.
+  da_linda            = c("raw", "tss"),
   da_wilcoxon         = c("clr", "tss", "log10", "rarefied"),
   da_kruskal          = c("clr", "tss", "log10", "rarefied"),
 
@@ -156,6 +162,11 @@ mfg_normalization_reason <- function(analysis, norm) {
   if (grepl("^alpha_richness|^faith_pd", analysis) && norm != "rarefied") {
     return(paste("richness estimators count singletons and doubletons, so they",
                  "measure sequencing effort unless depth is equalized"))
+  }
+  if (analysis == "da_linda") {
+    return(paste("LinDA CLR-transforms internally and estimates the bias term",
+                 "itself; give it counts or proportions and declare which, but",
+                 "never pre-transformed or rarefied input"))
   }
   if (grepl("^da_deseq2|^da_ancombc2|^da_aldex2|^models_count", analysis)) {
     return(paste("this method estimates its own size factors from raw counts;",
