@@ -15,6 +15,9 @@ identifiers:
   - type: doi
     value: "10.5281/zenodo.22731453"
     description: The DOI of version 1.0.0.
+  - type: doi
+    value: "10.5281/zenodo.22782764"
+    description: The DOI of version 1.1.0.
 repository-code: "https://github.com/barah123/MicroFitGut"
 url: "https://github.com/barah123/MicroFitGut"
 abstract: >-
@@ -38,5 +41,5 @@ keywords:
   - reproducible research
   - large language model agent
 license: MIT
-version: 1.1.0
-date-released: "2026-09-15"
+version: 1.2.1
+date-released: "2026-09-19"
