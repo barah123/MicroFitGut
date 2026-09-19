@@ -10,7 +10,7 @@
       "name": "microfitgut",
       "source": "./",
       "description": "Downstream microbiome analysis agent: QC, normalization, alpha and beta diversity, differential abundance, mixed and zero-inflated models, publication figures, and a traceable report. Includes benchmark mode for reproducing published analyses.",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "license": "MIT",
       "category": "science",
       "keywords": [
