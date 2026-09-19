@@ -284,6 +284,7 @@ drop_empty_taxa <- function(ps) {
 #'
 #' Returns list(ps = <filtered>, log = <mfg_qc_log>).
 run_qc <- function(ps,
+                   humann            = NULL,
                    remove_unwanted   = TRUE,
                    prevalence        = 0.10,
                    singleton_min     = 1,
@@ -296,6 +297,38 @@ run_qc <- function(ps,
     looks_like_relative_abundance(as(phyloseq::otu_table(ps), "matrix"))
 
   log <- qc_begin(ps)
+
+  # A HUMAnN table carries sentinel rows and species-stratified rows that are
+  # not community features. They go first: the sentinels are large enough to
+  # distort anything abundance-based that follows, and the stratified rows would
+  # otherwise be counted as independent features by every later step.
+  if (is.null(humann)) {
+    fn <- phyloseq::taxa_names(ps)
+    humann <- any(grepl("^(UNMAPPED|UNINTEGRATED)", fn, ignore.case = TRUE)) ||
+      any(grepl("\\|", fn))
+  }
+  if (isTRUE(humann)) {
+    before <- ps
+    ps <- filter_humann(ps, verbose = verbose)
+    log <- qc_step(log, "humann_features", before, ps,
+      rule = "drop UNMAPPED and UNINTEGRATED rows, and species-stratified rows (FEATURE|g__...s__...)",
+      rationale = paste("The sentinels count reads that did not map or did not",
+                        "fall in a known pathway; they are quality measures rather",
+                        "than community features and are large enough to dominate",
+                        "a compositional transform. The stratified rows decompose",
+                        "the community rows they accompany, so testing both counts",
+                        "the same signal repeatedly and pads the multiple-testing",
+                        "denominator with rows that cannot fail independently."))
+  }
+
+  # The taxonomic filter needs a tax_table. A functional table has none, so
+  # asking for it there is a category error rather than a choice.
+  if (isTRUE(remove_unwanted) && is.null(phyloseq::access(ps, "tax_table"))) {
+    if (verbose) message("Skipping unwanted-taxa removal: no tax_table (functional table).")
+    mfg_log("qc", "unwanted_taxa_skipped",
+            list(reason = "no tax_table; feature ids are pathways or gene families"))
+    remove_unwanted <- FALSE
+  }
 
   if (isTRUE(remove_unwanted)) {
     before <- ps
