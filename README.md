@@ -24,7 +24,7 @@
 
 ---
 
-## Why it exists
+## Why it exists ##
 
 Microbiome analysis has a specific failure mode: the pipeline runs cleanly, the
 figures look publishable, and the answer is wrong. Rarefied counts get fed to
