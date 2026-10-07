@@ -617,7 +617,7 @@ supplies the metadata Zenodo archives.
 
 ## Credits
 
-Built by **Philip Appiah**
+Built by **Philip Appiah in collaboration with Alaa Fadaq**
 ([0009-0002-0706-2506](https://orcid.org/0009-0002-0706-2506)),
 The George Washington University.
 
